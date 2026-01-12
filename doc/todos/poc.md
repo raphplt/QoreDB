@@ -6,13 +6,13 @@
 
 ### 🔌 Connexions
 
-* [ ] **PostgreSQL** — Connexion et exécution de requêtes
-* [ ] **MySQL / MariaDB** — Connexion et exécution de requêtes
-* [ ] **MongoDB** — Connexion et requêtes NoSQL
-* [ ] **Connexions multiples** — Gérer plusieurs bases en parallèle
+* [x] **PostgreSQL** — Connexion et exécution de requêtes
+* [x] **MySQL / MariaDB** — Connexion et exécution de requêtes
+* [x] **MongoDB** — Connexion et requêtes NoSQL
+* [x] **Connexions multiples** — Gérer plusieurs bases en parallèle
 * [ ] **Test de connexion** — Vérifier avant d’enregistrer
-* [ ] **SSL / TLS** — Connexions sécurisées
-* [ ] **SSH Tunnel** — Accès aux bases privées
+* [x] **SSL / TLS** — Connexions sécurisées
+* [x] **SSH Tunnel** — Accès aux bases privées
 
 ### 🔐 Sécurité locale
 
