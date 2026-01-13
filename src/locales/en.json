@@ -99,5 +99,19 @@
         "create": "Create",
         "cancel": "Cancel",
         "mongoCreateDbHint": "For MongoDB, simply insert data into a namespace to create it."
+    },
+    "logs": {
+        "title": "Error Logs",
+        "filter": {
+            "all": "All",
+            "error": "Error",
+            "warn": "Warn",
+            "info": "Info"
+        },
+        "searchPlaceholder": "Search logs...",
+        "clear": "Clear",
+        "clearConfirm": "Clear all error logs?",
+        "noLogs": "No error logs",
+        "refresh": "Refresh"
     }
 }

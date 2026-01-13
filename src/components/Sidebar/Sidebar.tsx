@@ -99,10 +99,15 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTa
   return (
     <aside className="w-64 h-full flex flex-col border-r border-border bg-muted/30">
       <header className="h-14 flex items-center justify-between px-4 border-b border-border">
-        <div className="flex items-center gap-2 font-semibold text-foreground">
+        <button
+          onClick={() => window.location.href = '/'}
+           className="flex items-center gap-2 font-semibold text-foreground">
           <img src="/logo.png" alt="QoreDB" width={24} height={24} />
           QoreDB
-        </div>
+        </button>
+        <p className="text-xs text-muted-foreground">
+          v1.0.0
+        </p>
       </header>
 
       <section className="flex-1 overflow-auto py-2">

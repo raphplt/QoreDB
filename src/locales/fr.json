@@ -56,7 +56,8 @@
         "themeDark": "Sombre",
         "themeSystem": "Système",
         "languageDescription": "Sélectionnez votre langue préférée pour l'interface.",
-        "themeDescription": "Personnalisez l'apparence de l'application."
+        "themeDescription": "Personnalisez l'apparence de l'application.",
+        "mongoCreateDbHint": "Pour MongoDB, insérez simplement des données dans un espace de noms pour le créer."
     },
     "table": {
         "rows": "lignes",
@@ -91,5 +92,19 @@
         "loading": "Chargement...",
         "error": "Erreur",
         "success": "Succès"
+    },
+    "logs": {
+        "title": "Journaux d'erreurs",
+        "filter": {
+            "all": "Tous",
+            "error": "Erreur",
+            "warn": "Avertissement",
+            "info": "Info"
+        },
+        "searchPlaceholder": "Rechercher...",
+        "clear": "Effacer",
+        "clearConfirm": "Effacer tous les journaux d'erreurs ?",
+        "noLogs": "Aucun journal d'erreur",
+        "refresh": "Actualiser"
     }
 }
