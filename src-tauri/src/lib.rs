@@ -3,6 +3,7 @@
 
 pub mod commands;
 pub mod engine;
+pub mod vault;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -11,6 +12,7 @@ use engine::drivers::mongodb::MongoDriver;
 use engine::drivers::mysql::MySqlDriver;
 use engine::drivers::postgres::PostgresDriver;
 use engine::{DriverRegistry, SessionManager};
+use vault::VaultLock;
 
 /// Shared application state type
 pub type SharedState = Arc<Mutex<AppState>>;
@@ -19,6 +21,7 @@ pub type SharedState = Arc<Mutex<AppState>>;
 pub struct AppState {
     pub registry: Arc<DriverRegistry>,
     pub session_manager: SessionManager,
+    pub vault_lock: VaultLock,
 }
 
 impl AppState {
@@ -32,10 +35,15 @@ impl AppState {
 
         let registry = Arc::new(registry);
         let session_manager = SessionManager::new(Arc::clone(&registry));
+        let mut vault_lock = VaultLock::new();
+
+        // Auto-unlock if no master password is set
+        let _ = vault_lock.auto_unlock_if_no_password();
 
         Self {
             registry,
             session_manager,
+            vault_lock,
         }
     }
 }
@@ -64,6 +72,14 @@ pub fn run() {
             commands::query::cancel_query,
             commands::query::list_namespaces,
             commands::query::list_collections,
+            // Vault commands
+            commands::vault::get_vault_status,
+            commands::vault::setup_master_password,
+            commands::vault::unlock_vault,
+            commands::vault::lock_vault,
+            commands::vault::save_connection,
+            commands::vault::list_saved_connections,
+            commands::vault::delete_saved_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

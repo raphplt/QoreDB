@@ -1,0 +1,207 @@
+/* QoreDB Design System
+ * Based on VISUAL_FOUNDATION.md
+ * GitHub Primer clarity + Stripe Sessions elegance
+ */
+
+/* ============================================
+   CSS RESET
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--q-font-ui);
+  background: var(--q-bg-0);
+  color: var(--q-text-0);
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ============================================
+   CSS VARIABLES (TOKENS)
+   ============================================ */
+:root {
+  /* Colors - Light Mode */
+  --q-bg-0: #FFFFFF;
+  --q-bg-1: #F6F7F9;
+  --q-bg-2: #ECEEF1;
+  --q-border: #DDE0E5;
+  --q-text-0: #0E1116;
+  --q-text-1: #5B6070;
+  --q-text-2: #8A90A0;
+
+  /* Accent */
+  --q-accent: #6B5CFF;
+  --q-accent-soft: #E7E5FF;
+  --q-accent-strong: #5847FF;
+
+  /* Semantic */
+  --q-success: #16A34A;
+  --q-warning: #F59E0B;
+  --q-error: #DC2626;
+  --q-info: #3B82F6;
+
+  /* Typography */
+  --q-font-ui: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --q-font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+  /* Font sizes */
+  --q-text-xs: 0.75rem;
+  --q-text-sm: 0.8125rem;
+  --q-text-base: 0.875rem;
+  --q-text-lg: 1rem;
+  --q-text-xl: 1.125rem;
+
+  /* Spacing */
+  --q-space-1: 4px;
+  --q-space-2: 8px;
+  --q-space-3: 12px;
+  --q-space-4: 16px;
+  --q-space-5: 20px;
+  --q-space-6: 24px;
+  --q-space-8: 32px;
+
+  /* Radius */
+  --q-radius-sm: 4px;
+  --q-radius-md: 6px;
+  --q-radius-lg: 8px;
+
+  /* Shadows */
+  --q-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --q-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --q-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Layout */
+  --q-sidebar-width: 260px;
+  --q-header-height: 40px;
+  --q-tab-height: 36px;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+[data-theme="dark"] {
+  --q-bg-0: #0B0C0F;
+  --q-bg-1: #14151A;
+  --q-bg-2: #1C1E24;
+  --q-border: #2A2D35;
+  --q-text-0: #F4F6FA;
+  --q-text-1: #9AA0AE;
+  --q-text-2: #6B7280;
+
+  --q-accent: #7A6CFF;
+  --q-accent-soft: rgba(122, 108, 255, 0.15);
+  --q-accent-strong: #9A8CFF;
+
+  --q-success: #22C55E;
+  --q-warning: #FBBF24;
+  --q-error: #F87171;
+  --q-info: #60A5FA;
+
+  --q-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --q-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --q-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   BASE ELEMENTS
+   ============================================ */
+a {
+  color: var(--q-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  font-size: var(--q-text-sm);
+  cursor: pointer;
+  border: none;
+  border-radius: var(--q-radius-md);
+  padding: var(--q-space-2) var(--q-space-3);
+  background: var(--q-bg-2);
+  color: var(--q-text-0);
+  transition: background 0.15s ease;
+}
+
+button:hover {
+  background: var(--q-border);
+}
+
+button.primary {
+  background: var(--q-accent);
+  color: white;
+}
+
+button.primary:hover {
+  background: var(--q-accent-strong);
+}
+
+input, textarea {
+  font-family: inherit;
+  font-size: var(--q-text-base);
+  background: var(--q-bg-0);
+  color: var(--q-text-0);
+  border: 1px solid var(--q-border);
+  border-radius: var(--q-radius-md);
+  padding: var(--q-space-2) var(--q-space-3);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--q-accent);
+  box-shadow: 0 0 0 3px var(--q-accent-soft);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--q-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--q-text-2);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-muted {
+  color: var(--q-text-1);
+}
+
+.text-secondary {
+  color: var(--q-text-2);
+}
+
+.mono {
+  font-family: var(--q-font-mono);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

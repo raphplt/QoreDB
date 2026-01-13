@@ -4,6 +4,21 @@
 
 > Objectif : remplacer DBeaver/phpMyAdmin pour 20–30 % de leur usage réel.
 
+### 🧱 Data Engine Kernel
+
+- [x] **Interface DataEngine** — Définir une API commune pour toutes les bases
+- [x] **Driver PostgreSQL** — Implémentation du kernel
+- [x] **Driver MySQL** — Implémentation du kernel
+- [x] **Driver MongoDB** — Implémentation NoSQL du kernel
+- [x] **Registry de drivers** — Système de plugins internes
+- [x] **Mapping universel**
+  - namespace (db / schema / bucket)
+  - collection (table / collection)
+  - record
+- [x] **Normalisation des erreurs**
+- [x] **Normalisation des résultats (cursor / rows / json)**
+
+
 ### 🔌 Connexions
 
 * [x] **PostgreSQL** — Connexion et exécution de requêtes
@@ -16,18 +31,18 @@
 
 ### 🔐 Sécurité locale
 
-* [ ] **Coffre chiffré** — Stocker les credentials localement de façon sûre
-* [ ] **Jamais en clair** — Aucun mot de passe accessible depuis l’UI
-* [ ] **Isolation par projet** — Une base ≠ une autre
-* [ ] **Verrouillage au démarrage** — Protéger l’app quand elle s’ouvre
+* [x] **Coffre chiffré** — Stocker les credentials localement de façon sûre
+* [x] **Jamais en clair** — Aucun mot de passe accessible depuis l’UI
+* [x] **Isolation par projet** — Une base ≠ une autre
+* [x] **Verrouillage au démarrage** — Protéger l’app quand elle s’ouvre
 
 ### 🧭 Interface
 
-* [ ] **Sidebar connexions** — Liste claire des bases
-* [ ] **Arbre DB** — Bases → schémas → tables / collections
-* [ ] **Onglets** — Plusieurs requêtes ouvertes
-* [ ] **Dark mode** — Lisible de nuit
-* [ ] **Recherche globale** — Trouver tables / collections rapidement
+* [x] **Sidebar connexions** — Liste claire des bases
+* [x] **Arbre DB** — Bases → schémas → tables / collections
+* [x] **Onglets** — Plusieurs requêtes ouvertes
+* [x] **Dark mode** — Lisible de nuit
+* [x] **Recherche globale** — Trouver tables / collections rapidement
 
 ### ✍️ SQL
 
@@ -57,18 +72,4 @@
 * [ ] **Favoris**
 * [ ] **Sessions sauvegardées**
 * [ ] **Logs d’erreurs**
-
-### 🧱 Data Engine Kernel
-
-- [x] **Interface DataEngine** — Définir une API commune pour toutes les bases
-- [x] **Driver PostgreSQL** — Implémentation du kernel
-- [x] **Driver MySQL** — Implémentation du kernel
-- [x] **Driver MongoDB** — Implémentation NoSQL du kernel
-- [x] **Registry de drivers** — Système de plugins internes
-- [x] **Mapping universel**
-  - namespace (db / schema / bucket)
-  - collection (table / collection)
-  - record
-- [x] **Normalisation des erreurs**
-- [x] **Normalisation des résultats (cursor / rows / json)**
 

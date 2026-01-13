@@ -34,3 +34,7 @@ futures = "0.3"
 
 # Note: SSH tunneling uses native OpenSSH command (ssh -L), no external crate needed
 
+# Security - credential storage
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+argon2 = "0.5"
+rand = "0.8"

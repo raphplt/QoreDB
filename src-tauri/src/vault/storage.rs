@@ -1,0 +1,215 @@
+//! Vault Storage
+//!
+//! Secure storage for database credentials using OS keychain.
+
+use keyring::Entry;
+use serde::{Deserialize, Serialize};
+
+use crate::engine::error::{EngineError, EngineResult};
+use crate::vault::credentials::{SavedConnection, StoredCredentials};
+
+const SERVICE_PREFIX: &str = "qoredb";
+
+/// Storage for saved connections and their credentials
+pub struct VaultStorage {
+    project_id: String,
+}
+
+impl VaultStorage {
+    /// Creates a new vault storage with project isolation
+    pub fn new(project_id: &str) -> Self {
+        Self {
+            project_id: project_id.to_string(),
+        }
+    }
+
+    /// Gets the keyring service name for this project
+    fn service_name(&self) -> String {
+        format!("{}_{}", SERVICE_PREFIX, self.project_id)
+    }
+
+    /// Gets the keyring key for connection metadata
+    fn metadata_key(&self, connection_id: &str) -> String {
+        format!("meta_{}", connection_id)
+    }
+
+    /// Gets the keyring key for connection credentials
+    fn credentials_key(&self, connection_id: &str) -> String {
+        format!("creds_{}", connection_id)
+    }
+
+    /// Gets the keyring key for the connection list
+    fn list_key(&self) -> String {
+        "__connection_list__".to_string()
+    }
+
+    /// Saves a connection with its credentials
+    pub fn save_connection(
+        &self,
+        connection: &SavedConnection,
+        credentials: &StoredCredentials,
+    ) -> EngineResult<()> {
+        let service = self.service_name();
+
+        // Save metadata (safe to expose)
+        let meta_entry = Entry::new(&service, &self.metadata_key(&connection.id))
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        let meta_json = serde_json::to_string(connection)
+            .map_err(|e| EngineError::internal(format!("Serialization error: {}", e)))?;
+
+        meta_entry
+            .set_password(&meta_json)
+            .map_err(|e| EngineError::internal(format!("Failed to save metadata: {}", e)))?;
+
+        // Save credentials (secrets)
+        let creds_entry = Entry::new(&service, &self.credentials_key(&connection.id))
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        let creds_json = serde_json::to_string(&CredsJson {
+            db_password: credentials.db_password.clone(),
+            ssh_password: credentials.ssh_password.clone(),
+            ssh_key_passphrase: credentials.ssh_key_passphrase.clone(),
+        })
+        .map_err(|e| EngineError::internal(format!("Serialization error: {}", e)))?;
+
+        creds_entry
+            .set_password(&creds_json)
+            .map_err(|e| EngineError::internal(format!("Failed to save credentials: {}", e)))?;
+
+        // Update connection list
+        self.add_to_list(&connection.id)?;
+
+        Ok(())
+    }
+
+    /// Retrieves a saved connection (metadata only, no credentials)
+    pub fn get_connection(&self, connection_id: &str) -> EngineResult<SavedConnection> {
+        let service = self.service_name();
+
+        let entry = Entry::new(&service, &self.metadata_key(connection_id))
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        let meta_json = entry
+            .get_password()
+            .map_err(|_| EngineError::internal("Connection not found"))?;
+
+        let connection: SavedConnection = serde_json::from_str(&meta_json)
+            .map_err(|e| EngineError::internal(format!("Deserialization error: {}", e)))?;
+
+        Ok(connection)
+    }
+
+    /// Retrieves credentials for a connection
+    pub fn get_credentials(&self, connection_id: &str) -> EngineResult<StoredCredentials> {
+        let service = self.service_name();
+
+        let entry = Entry::new(&service, &self.credentials_key(connection_id))
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        let creds_json = entry
+            .get_password()
+            .map_err(|_| EngineError::internal("Credentials not found"))?;
+
+        let creds: CredsJson = serde_json::from_str(&creds_json)
+            .map_err(|e| EngineError::internal(format!("Deserialization error: {}", e)))?;
+
+        Ok(StoredCredentials {
+            db_password: creds.db_password,
+            ssh_password: creds.ssh_password,
+            ssh_key_passphrase: creds.ssh_key_passphrase,
+        })
+    }
+
+    /// Deletes a saved connection
+    pub fn delete_connection(&self, connection_id: &str) -> EngineResult<()> {
+        let service = self.service_name();
+
+        // Delete metadata
+        if let Ok(entry) = Entry::new(&service, &self.metadata_key(connection_id)) {
+            let _ = entry.delete_credential();
+        }
+
+        // Delete credentials
+        if let Ok(entry) = Entry::new(&service, &self.credentials_key(connection_id)) {
+            let _ = entry.delete_credential();
+        }
+
+        // Remove from list
+        self.remove_from_list(connection_id)?;
+
+        Ok(())
+    }
+
+    /// Lists all saved connection IDs
+    pub fn list_connections(&self) -> EngineResult<Vec<String>> {
+        let service = self.service_name();
+
+        let entry = Entry::new(&service, &self.list_key())
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        match entry.get_password() {
+            Ok(list_json) => {
+                let list: Vec<String> = serde_json::from_str(&list_json).unwrap_or_default();
+                Ok(list)
+            }
+            Err(keyring::Error::NoEntry) => Ok(Vec::new()),
+            Err(e) => Err(EngineError::internal(format!("Failed to get list: {}", e))),
+        }
+    }
+
+    /// Lists all saved connections with metadata
+    pub fn list_connections_full(&self) -> EngineResult<Vec<SavedConnection>> {
+        let ids = self.list_connections()?;
+        let mut connections = Vec::new();
+
+        for id in ids {
+            if let Ok(conn) = self.get_connection(&id) {
+                connections.push(conn);
+            }
+        }
+
+        Ok(connections)
+    }
+
+    fn add_to_list(&self, connection_id: &str) -> EngineResult<()> {
+        let mut list = self.list_connections()?;
+        
+        if !list.contains(&connection_id.to_string()) {
+            list.push(connection_id.to_string());
+            self.save_list(&list)?;
+        }
+
+        Ok(())
+    }
+
+    fn remove_from_list(&self, connection_id: &str) -> EngineResult<()> {
+        let mut list = self.list_connections()?;
+        list.retain(|id| id != connection_id);
+        self.save_list(&list)
+    }
+
+    fn save_list(&self, list: &[String]) -> EngineResult<()> {
+        let service = self.service_name();
+
+        let entry = Entry::new(&service, &self.list_key())
+            .map_err(|e| EngineError::internal(format!("Keyring error: {}", e)))?;
+
+        let list_json = serde_json::to_string(list)
+            .map_err(|e| EngineError::internal(format!("Serialization error: {}", e)))?;
+
+        entry
+            .set_password(&list_json)
+            .map_err(|e| EngineError::internal(format!("Failed to save list: {}", e)))?;
+
+        Ok(())
+    }
+}
+
+/// Internal struct for serializing credentials
+#[derive(Serialize, Deserialize)]
+struct CredsJson {
+    db_password: String,
+    ssh_password: Option<String>,
+    ssh_key_passphrase: Option<String>,
+}

@@ -1,0 +1,197 @@
+/**
+ * Tauri API wrappers for type-safe invocations
+ */
+import { invoke } from '@tauri-apps/api/core';
+
+// ============================================
+// TYPES
+// ============================================
+
+export interface ConnectionConfig {
+  driver: string;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database?: string;
+  ssl: boolean;
+  ssh_tunnel?: SshTunnelConfig;
+}
+
+export interface SshTunnelConfig {
+  host: string;
+  port: number;
+  username: string;
+  auth: SshAuth;
+}
+
+export type SshAuth = 
+  | { Password: { password: string } }
+  | { Key: { private_key_path: string; passphrase?: string } };
+
+export interface ConnectionResponse {
+  success: boolean;
+  session_id?: string;
+  error?: string;
+}
+
+export interface SessionListItem {
+  id: string;
+  display_name: string;
+}
+
+export interface SavedConnection {
+  id: string;
+  name: string;
+  driver: string;
+  host: string;
+  port: number;
+  username: string;
+  database?: string;
+  ssl: boolean;
+  project_id: string;
+  ssh_tunnel?: {
+    host: string;
+    port: number;
+    username: string;
+    auth_type: string;
+    key_path?: string;
+  };
+}
+
+export interface VaultStatus {
+  is_locked: boolean;
+  has_master_password: boolean;
+}
+
+export interface VaultResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface Namespace {
+  database: string;
+  schema?: string;
+}
+
+export interface Collection {
+  namespace: Namespace;
+  name: string;
+  collection_type: 'Table' | 'View' | 'Collection';
+}
+
+export interface QueryResult {
+  columns: ColumnInfo[];
+  rows: Row[];
+  affected_rows?: number;
+  execution_time_ms: number;
+}
+
+export interface ColumnInfo {
+  name: string;
+  data_type: string;
+  nullable: boolean;
+}
+
+export type Row = { values: Value[] };
+export type Value = null | boolean | number | string | object;
+
+// ============================================
+// CONNECTION COMMANDS
+// ============================================
+
+export async function testConnection(config: ConnectionConfig): Promise<ConnectionResponse> {
+  return invoke('test_connection', { config });
+}
+
+export async function connect(config: ConnectionConfig): Promise<ConnectionResponse> {
+  return invoke('connect', { config });
+}
+
+export async function disconnect(sessionId: string): Promise<ConnectionResponse> {
+  return invoke('disconnect', { sessionId });
+}
+
+export async function listSessions(): Promise<SessionListItem[]> {
+  return invoke('list_sessions');
+}
+
+// ============================================
+// QUERY COMMANDS
+// ============================================
+
+export async function executeQuery(sessionId: string, query: string): Promise<{
+  success: boolean;
+  result?: QueryResult;
+  error?: string;
+}> {
+  return invoke('execute_query', { sessionId, query });
+}
+
+export async function listNamespaces(sessionId: string): Promise<{
+  success: boolean;
+  namespaces?: Namespace[];
+  error?: string;
+}> {
+  return invoke('list_namespaces', { sessionId });
+}
+
+export async function listCollections(sessionId: string, namespace: Namespace): Promise<{
+  success: boolean;
+  collections?: Collection[];
+  error?: string;
+}> {
+  return invoke('list_collections', { sessionId, namespace });
+}
+
+// ============================================
+// VAULT COMMANDS
+// ============================================
+
+export async function getVaultStatus(): Promise<VaultStatus> {
+  return invoke('get_vault_status');
+}
+
+export async function setupMasterPassword(password: string): Promise<VaultResponse> {
+  return invoke('setup_master_password', { password });
+}
+
+export async function unlockVault(password: string): Promise<VaultResponse> {
+  return invoke('unlock_vault', { password });
+}
+
+export async function lockVault(): Promise<VaultResponse> {
+  return invoke('lock_vault');
+}
+
+export async function saveConnection(input: {
+  id: string;
+  name: string;
+  driver: string;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database?: string;
+  ssl: boolean;
+  project_id: string;
+  ssh_tunnel?: {
+    host: string;
+    port: number;
+    username: string;
+    auth_type: string;
+    password?: string;
+    key_path?: string;
+    key_passphrase?: string;
+  };
+}): Promise<VaultResponse> {
+  return invoke('save_connection', { input });
+}
+
+export async function listSavedConnections(projectId: string): Promise<SavedConnection[]> {
+  return invoke('list_saved_connections', { projectId });
+}
+
+export async function deleteSavedConnection(projectId: string, connectionId: string): Promise<VaultResponse> {
+  return invoke('delete_saved_connection', { projectId, connectionId });
+}

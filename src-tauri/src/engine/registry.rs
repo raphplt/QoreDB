@@ -58,7 +58,5 @@ impl Default for DriverRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // Tests will be added when we have mock drivers
 }

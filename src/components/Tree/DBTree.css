@@ -1,0 +1,54 @@
+.db-tree {
+  padding-left: var(--q-space-4);
+}
+
+.tree-loading {
+  padding: var(--q-space-3) var(--q-space-4);
+  color: var(--q-text-2);
+  font-size: var(--q-text-sm);
+}
+
+.tree-namespace {
+  margin-bottom: var(--q-space-1);
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: var(--q-space-2);
+  width: 100%;
+  padding: var(--q-space-1) var(--q-space-2);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--q-radius-sm);
+  transition: background 0.15s ease;
+}
+
+.tree-node:hover {
+  background: var(--q-bg-2);
+}
+
+.tree-icon {
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.tree-label {
+  flex: 1;
+  font-size: var(--q-text-sm);
+  color: var(--q-text-0);
+}
+
+.tree-children {
+  padding-left: var(--q-space-4);
+}
+
+.tree-leaf {
+  color: var(--q-text-1);
+}
+
+.tree-leaf:hover {
+  color: var(--q-text-0);
+}
