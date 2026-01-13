@@ -1,21 +1,32 @@
 import { useState, useEffect } from 'react';
+import { ConnectionItem } from './ConnectionItem';
 import { DBTree } from '../Tree/DBTree';
-import { listSavedConnections, SavedConnection } from '../../lib/tauri';
+import { listSavedConnections, connect, getConnectionCredentials, SavedConnection, ConnectionConfig } from '../../lib/tauri';
 import { useTheme } from '../../hooks/useTheme';
 import './Sidebar.css';
-import { ConnectionItem } from './ConnectionItem'
 
 const DEFAULT_PROJECT = 'default';
 
-export function Sidebar() {
+interface SidebarProps {
+  onNewConnection: () => void;
+  onConnected: (sessionId: string, driver: string) => void;
+  connectedSessionId: string | null;
+}
+
+export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: SidebarProps) {
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null);
   const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => {
     loadConnections();
   }, []);
+
+  useEffect(() => {
+    loadConnections();
+  }, [connectedSessionId]);
 
   async function loadConnections() {
     try {
@@ -26,9 +37,49 @@ export function Sidebar() {
     }
   }
 
-  function handleSelect(id: string) {
-    setSelectedId(id);
-    setExpandedId(expandedId === id ? null : id);
+  async function handleConnect(conn: SavedConnection) {
+    setConnecting(conn.id);
+    setSelectedId(conn.id);
+
+    try {
+      const credsResult = await getConnectionCredentials('default', conn.id);
+      
+      if (!credsResult.success || !credsResult.password) {
+        console.error('Failed to get credentials:', credsResult.error);
+        return;
+      }
+
+      const config: ConnectionConfig = {
+        driver: conn.driver,
+        host: conn.host,
+        port: conn.port,
+        username: conn.username,
+        password: credsResult.password,
+        database: conn.database,
+        ssl: conn.ssl,
+      };
+
+      const result = await connect(config);
+      
+      if (result.success && result.session_id) {
+        onConnected(result.session_id, conn.driver);
+        setExpandedId(conn.id);
+      } else {
+        console.error('Connection failed:', result.error);
+      }
+    } catch (err) {
+      console.error('Connection error:', err);
+    } finally {
+      setConnecting(null);
+    }
+  }
+
+  function handleSelect(conn: SavedConnection) {
+    if (connectedSessionId && selectedId === conn.id) {
+      setExpandedId(expandedId === conn.id ? null : conn.id);
+    } else {
+      handleConnect(conn);
+    }
   }
 
   return (
@@ -56,9 +107,11 @@ export function Sidebar() {
                   connection={conn}
                   isSelected={selectedId === conn.id}
                   isExpanded={expandedId === conn.id}
-                  onSelect={() => handleSelect(conn.id)}
+                  isConnected={connectedSessionId !== null && selectedId === conn.id}
+                  isConnecting={connecting === conn.id}
+                  onSelect={() => handleSelect(conn)}
                 />
-                {expandedId === conn.id && (
+                {expandedId === conn.id && connectedSessionId && (
                   <DBTree connectionId={conn.id} />
                 )}
               </div>
@@ -68,7 +121,9 @@ export function Sidebar() {
       </section>
 
       <footer className="sidebar-footer">
-        <button className="sidebar-add-btn">+ New Connection</button>
+        <button className="sidebar-add-btn" onClick={onNewConnection}>
+          + New Connection
+        </button>
       </footer>
     </aside>
   );

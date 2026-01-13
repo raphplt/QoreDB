@@ -14,10 +14,7 @@ use engine::drivers::postgres::PostgresDriver;
 use engine::{DriverRegistry, SessionManager};
 use vault::VaultLock;
 
-/// Shared application state type
 pub type SharedState = Arc<Mutex<AppState>>;
-
-/// Application state shared across Tauri commands
 pub struct AppState {
     pub registry: Arc<DriverRegistry>,
     pub session_manager: SessionManager,
@@ -28,7 +25,6 @@ impl AppState {
     pub fn new() -> Self {
         let mut registry = DriverRegistry::new();
 
-        // Register all built-in drivers
         registry.register(Arc::new(PostgresDriver::new()));
         registry.register(Arc::new(MySqlDriver::new()));
         registry.register(Arc::new(MongoDriver::new()));
@@ -37,7 +33,6 @@ impl AppState {
         let session_manager = SessionManager::new(Arc::clone(&registry));
         let mut vault_lock = VaultLock::new();
 
-        // Auto-unlock if no master password is set
         let _ = vault_lock.auto_unlock_if_no_password();
 
         Self {
@@ -80,6 +75,7 @@ pub fn run() {
             commands::vault::save_connection,
             commands::vault::list_saved_connections,
             commands::vault::delete_saved_connection,
+            commands::vault::get_connection_credentials,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

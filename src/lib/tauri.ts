@@ -199,6 +199,14 @@ export async function listSavedConnections(projectId: string): Promise<SavedConn
   return invoke('list_saved_connections', { projectId });
 }
 
+export async function getConnectionCredentials(projectId: string, connectionId: string): Promise<{
+  success: boolean;
+  password?: string;
+  error?: string;
+}> {
+  return invoke('get_connection_credentials', { projectId, connectionId });
+}
+
 export async function deleteSavedConnection(projectId: string, connectionId: string): Promise<VaultResponse> {
   return invoke('delete_saved_connection', { projectId, connectionId });
 }

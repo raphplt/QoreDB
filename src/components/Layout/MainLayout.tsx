@@ -1,16 +1,21 @@
 import { ReactNode } from 'react';
-import { Sidebar } from '../Sidebar/Sidebar';
 import { TabBar } from '../Tabs/TabBar';
 import './MainLayout.css';
 
 interface MainLayoutProps {
   children: ReactNode;
+  sidebar?: ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+/**
+ * Main layout component.
+ * Note: Currently App.tsx manages the layout directly.
+ * This component is kept for potential future use.
+ */
+export function MainLayout({ children, sidebar }: MainLayoutProps) {
   return (
     <div className="layout">
-      <Sidebar />
+      {sidebar}
       <main className="layout-main">
         <TabBar />
         <div className="layout-content">

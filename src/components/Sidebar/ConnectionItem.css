@@ -19,6 +19,10 @@
   background: var(--q-accent-soft);
 }
 
+.connection-item.connected {
+  border-left: 2px solid var(--q-success);
+}
+
 .connection-icon {
   font-size: 1rem;
   flex-shrink: 0;
@@ -28,6 +32,15 @@
   flex: 1;
   font-size: var(--q-text-sm);
   color: var(--q-text-0);
+}
+
+.connection-status {
+  font-size: 0.75rem;
+  color: var(--q-text-2);
+}
+
+.connection-status.connected {
+  color: var(--q-success);
 }
 
 .connection-chevron {

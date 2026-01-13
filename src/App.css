@@ -22,6 +22,29 @@
   max-width: 400px;
 }
 
+.welcome-btn {
+  margin-top: var(--q-space-4);
+  padding: var(--q-space-3) var(--q-space-6);
+  background: var(--q-accent);
+  color: white;
+  border: none;
+  border-radius: var(--q-radius-md);
+  font-size: var(--q-text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.welcome-btn:hover {
+  background: var(--q-accent-strong);
+}
+
+.text-hint {
+  margin-top: var(--q-space-2);
+  font-size: var(--q-text-xs);
+  color: var(--q-text-2);
+}
+
 kbd {
   display: inline-block;
   padding: 2px 6px;

@@ -76,6 +76,19 @@ impl PostgresDriver {
         if let Ok(v) = row.try_get::<Option<String>, _>(idx) {
             return v.map(Value::Text).unwrap_or(Value::Null);
         }
+        // Date/Time types - convert to ISO 8601 string
+        if let Ok(v) = row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(idx) {
+            return v.map(|dt| Value::Text(dt.to_rfc3339())).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<chrono::NaiveDateTime>, _>(idx) {
+            return v.map(|dt| Value::Text(dt.format("%Y-%m-%d %H:%M:%S").to_string())).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<chrono::NaiveDate>, _>(idx) {
+            return v.map(|d| Value::Text(d.format("%Y-%m-%d").to_string())).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<chrono::NaiveTime>, _>(idx) {
+            return v.map(|t| Value::Text(t.format("%H:%M:%S").to_string())).unwrap_or(Value::Null);
+        }
         if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(idx) {
             return v.map(Value::Bytes).unwrap_or(Value::Null);
         }

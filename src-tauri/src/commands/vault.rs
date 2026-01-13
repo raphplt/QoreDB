@@ -226,3 +226,44 @@ pub async fn delete_saved_connection(
         }),
     }
 }
+
+/// Response for getting credentials
+#[derive(Debug, Serialize)]
+pub struct CredentialsResponse {
+    pub success: bool,
+    pub password: Option<String>,
+    pub error: Option<String>,
+}
+
+/// Gets the password for a saved connection
+#[tauri::command]
+pub async fn get_connection_credentials(
+    state: State<'_, SharedState>,
+    project_id: String,
+    connection_id: String,
+) -> Result<CredentialsResponse, String> {
+    let state = state.lock().await;
+
+    if state.vault_lock.is_locked() {
+        return Ok(CredentialsResponse {
+            success: false,
+            password: None,
+            error: Some("Vault is locked".to_string()),
+        });
+    }
+
+    let storage = VaultStorage::new(&project_id);
+
+    match storage.get_credentials(&connection_id) {
+        Ok(creds) => Ok(CredentialsResponse {
+            success: true,
+            password: Some(creds.db_password),
+            error: None,
+        }),
+        Err(e) => Ok(CredentialsResponse {
+            success: false,
+            password: None,
+            error: Some(e.to_string()),
+        }),
+    }
+}
