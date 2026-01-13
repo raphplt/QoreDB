@@ -10,10 +10,8 @@ function App() {
   // TODO: Wire up connection selection from sidebar
   const activeSessionId: string | null = null;
 
-  // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Cmd+K or Ctrl+K: Open search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);

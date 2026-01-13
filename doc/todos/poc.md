@@ -46,11 +46,11 @@
 
 ### ✍️ SQL
 
-* [ ] **Éditeur SQL** — Écrire et exécuter
-* [ ] **Exécution par sélection** — Lancer une partie du script
-* [ ] **Résultats tabulaires** — Voir les données
-* [ ] **Scroll virtuel** — Gros datasets sans lag
-* [ ] **Annulation** — Stopper une requête longue
+* [x] **Éditeur SQL** — Écrire et exécuter
+* [x] **Exécution par sélection** — Lancer une partie du script
+* [x] **Résultats tabulaires** — Voir les données
+* [x] **Scroll virtuel** — Gros datasets sans lag
+* [x] **Annulation** — Stopper une requête longue
 
 ### 🍃 NoSQL
 
