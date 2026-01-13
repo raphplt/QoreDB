@@ -46,11 +46,6 @@ impl Default for AppState {
     }
 }
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let state: SharedState = Arc::new(Mutex::new(AppState::new()));
@@ -59,7 +54,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            greet,
             // Connection commands
             commands::connection::test_connection,
             commands::connection::connect,
