@@ -1,0 +1,36 @@
+.mongo-editor {
+  flex: 1;
+  min-height: 200px;
+  border: 1px solid var(--q-border);
+  border-radius: var(--q-radius-md);
+  overflow: hidden;
+  background: var(--q-bg-0);
+}
+
+.mongo-editor .cm-editor {
+  height: 100%;
+  font-family: var(--q-font-mono);
+  font-size: var(--q-text-sm);
+}
+
+.mongo-editor .cm-scroller {
+  overflow: auto;
+}
+
+.mongo-editor .cm-content {
+  padding: var(--q-space-2) 0;
+}
+
+.mongo-editor .cm-line {
+  padding: 0 var(--q-space-2);
+}
+
+.mongo-editor .cm-gutters {
+  background: var(--q-bg-1);
+  border-right: 1px solid var(--q-border);
+  color: var(--q-text-2);
+}
+
+.mongo-editor .cm-activeLineGutter {
+  background: var(--q-bg-2);
+}

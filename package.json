@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
+    "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/state": "^6.5.3",
     "@codemirror/theme-one-dark": "^6.1.3",

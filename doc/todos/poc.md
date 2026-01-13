@@ -54,9 +54,9 @@
 
 ### 🍃 NoSQL
 
-* [ ] **Requêtes Mongo** — find(), aggregate(), etc.
-* [ ] **Navigation collections** — Explorer la base
-* [ ] **Aperçu JSON** — Voir les documents
+* [x] **Requêtes Mongo** — find(), aggregate(), etc.
+* [x] **Navigation collections** — Explorer la base
+* [x] **Aperçu JSON** — Voir les documents
 
 ### 📊 Data grid
 

@@ -59,6 +59,16 @@
   color: var(--q-warning);
 }
 
+.query-template-select {
+  padding: var(--q-space-1) var(--q-space-2);
+  font-size: var(--q-text-sm);
+  background: var(--q-bg-2);
+  border: 1px solid var(--q-border);
+  border-radius: var(--q-radius-sm);
+  color: var(--q-text-0);
+  cursor: pointer;
+}
+
 .query-editor {
   flex: 1;
   min-height: 150px;
@@ -68,6 +78,15 @@
 .query-results {
   flex: 1;
   min-height: 200px;
+}
+
+.query-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--q-text-2);
+  font-size: var(--q-text-sm);
 }
 
 .query-error {

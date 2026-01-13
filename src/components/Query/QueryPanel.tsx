@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { SQLEditor } from '../Editor/SQLEditor';
+import { MongoEditor, MONGO_TEMPLATES } from '../Editor/MongoEditor';
 import { ResultsTable } from '../Results/ResultsTable';
+import { JSONViewer } from '../Results/JSONViewer';
 import { executeQuery, cancelQuery, QueryResult } from '../../lib/tauri';
 import './QueryPanel.css';
 
@@ -10,19 +12,22 @@ interface QueryPanelProps {
 }
 
 export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps) {
-  const [query, setQuery] = useState('SELECT 1;');
+  const isMongo = dialect === 'mongodb';
+  const defaultQuery = isMongo ? MONGO_TEMPLATES.find : 'SELECT 1;';
+  
+  const [query, setQuery] = useState(defaultQuery);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleExecute = useCallback(async (sql?: string) => {
+  const handleExecute = useCallback(async (queryText?: string) => {
     if (!sessionId) {
       setError('No connection selected');
       return;
     }
 
-    const queryToRun = sql || query;
+    const queryToRun = queryText || query;
     if (!queryToRun.trim()) return;
 
     setLoading(true);
@@ -80,8 +85,24 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
           </button>
         )}
 
+        {isMongo && (
+          <select
+            className="query-template-select"
+            onChange={(e) => setQuery(MONGO_TEMPLATES[e.target.value as keyof typeof MONGO_TEMPLATES] || query)}
+            defaultValue=""
+          >
+            <option value="" disabled>Templates...</option>
+            <option value="find">find()</option>
+            <option value="findOne">findOne()</option>
+            <option value="aggregate">aggregate()</option>
+            <option value="insertOne">insertOne()</option>
+            <option value="updateOne">updateOne()</option>
+            <option value="deleteOne">deleteOne()</option>
+          </select>
+        )}
+
         <span className="query-hint">
-          Cmd+Enter to run • Select text to run partial
+          Cmd+Enter to run{!isMongo && ' • Select text to run partial'}
         </span>
 
         {!sessionId && (
@@ -89,16 +110,25 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
         )}
       </div>
 
-      {/* Editor */}
+      {/* Editor - SQL or MongoDB */}
       <div className="query-editor">
-        <SQLEditor
-          value={query}
-          onChange={setQuery}
-          onExecute={() => handleExecute()}
-          onExecuteSelection={(selection) => handleExecute(selection)}
-          dialect={dialect}
-          readOnly={loading}
-        />
+        {isMongo ? (
+          <MongoEditor
+            value={query}
+            onChange={setQuery}
+            onExecute={() => handleExecute()}
+            readOnly={loading}
+          />
+        ) : (
+          <SQLEditor
+            value={query}
+            onChange={setQuery}
+            onExecute={() => handleExecute()}
+            onExecuteSelection={(selection) => handleExecute(selection)}
+            dialect={dialect as 'postgres' | 'mysql'}
+            readOnly={loading}
+          />
+        )}
       </div>
 
       {/* Results / Error */}
@@ -110,8 +140,18 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
           </div>
         )}
 
-        {!error && (
-          <ResultsTable result={result} height={300} />
+        {!error && result && (
+          isMongo ? (
+            <JSONViewer data={result.rows.map(r => r.values[0])} />
+          ) : (
+            <ResultsTable result={result} height={300} />
+          )
+        )}
+
+        {!error && !result && (
+          <div className="query-empty">
+            Run a query to see results
+          </div>
         )}
       </div>
     </div>
