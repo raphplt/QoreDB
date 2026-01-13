@@ -54,22 +54,42 @@ impl MySqlDriver {
 
     /// Extracts a value from a MySqlRow at the given index
     fn extract_value(row: &MySqlRow, idx: usize) -> Value {
-        if let Ok(v) = row.try_get::<Option<bool>, _>(idx) {
-            return v.map(Value::Bool).unwrap_or(Value::Null);
-        }
         if let Ok(v) = row.try_get::<Option<i64>, _>(idx) {
             return v.map(Value::Int).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<u64>, _>(idx) {
+            return v.map(|u| Value::Int(u as i64)).unwrap_or(Value::Null);
         }
         if let Ok(v) = row.try_get::<Option<i32>, _>(idx) {
             return v.map(|i| Value::Int(i as i64)).unwrap_or(Value::Null);
         }
+        if let Ok(v) = row.try_get::<Option<u32>, _>(idx) {
+            return v.map(|u| Value::Int(u as i64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<i16>, _>(idx) {
+            return v.map(|i| Value::Int(i as i64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<u16>, _>(idx) {
+            return v.map(|u| Value::Int(u as i64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<i8>, _>(idx) {
+            return v.map(|i| Value::Int(i as i64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<u8>, _>(idx) {
+            return v.map(|u| Value::Int(u as i64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<bool>, _>(idx) {
+            return v.map(Value::Bool).unwrap_or(Value::Null);
+        }
         if let Ok(v) = row.try_get::<Option<f64>, _>(idx) {
             return v.map(Value::Float).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<f32>, _>(idx) {
+            return v.map(|f| Value::Float(f as f64)).unwrap_or(Value::Null);
         }
         if let Ok(v) = row.try_get::<Option<String>, _>(idx) {
             return v.map(Value::Text).unwrap_or(Value::Null);
         }
-        // Date/Time types - convert to ISO 8601 string
         if let Ok(v) = row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(idx) {
             return v.map(|dt| Value::Text(dt.to_rfc3339())).unwrap_or(Value::Null);
         }

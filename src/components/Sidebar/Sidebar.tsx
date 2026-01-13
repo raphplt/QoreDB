@@ -3,7 +3,8 @@ import { ConnectionItem } from './ConnectionItem';
 import { DBTree } from '../Tree/DBTree';
 import { listSavedConnections, connect, getConnectionCredentials, SavedConnection, ConnectionConfig } from '../../lib/tauri';
 import { useTheme } from '../../hooks/useTheme';
-import './Sidebar.css';
+import { Plus, Sun, Moon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const DEFAULT_PROJECT = 'default';
 
@@ -24,6 +25,7 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: Si
     loadConnections();
   }, []);
 
+  // Reload connections when modal closes/changes
   useEffect(() => {
     loadConnections();
   }, [connectedSessionId]);
@@ -83,23 +85,32 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: Si
   }
 
   return (
-    <aside className="sidebar">
-      <header className="sidebar-header">
-        <h1 className="sidebar-title">QoreDB</h1>
-        <button
-          className="sidebar-theme-toggle"
+    <aside className="w-64 h-full flex flex-col border-r border-border bg-muted/30">
+      <header className="h-14 flex items-center justify-between px-4 border-b border-border">
+        <div className="flex items-center gap-2 font-semibold text-foreground">
+          <img src="/logo.png" alt="QoreDB" width={24} height={24} />
+          QoreDB
+        </div>
+        <Button
+          variant="ghost" 
+          size="icon"
           onClick={toggleTheme}
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
         >
-          {isDark ? '☀️' : '🌙'}
-        </button>
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        </Button>
       </header>
 
-      <section className="sidebar-section">
-        <h2 className="sidebar-section-title">Connections</h2>
-        <div className="sidebar-connections">
+      <section className="flex-1 overflow-auto py-2">
+        <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Connections
+        </div>
+        <div className="px-2 space-y-0.5">
           {connections.length === 0 ? (
-            <p className="sidebar-empty">No saved connections</p>
+            <p className="px-2 py-4 text-sm text-center text-muted-foreground">
+              No saved connections
+            </p>
           ) : (
             connections.map(conn => (
               <div key={conn.id}>
@@ -112,7 +123,9 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: Si
                   onSelect={() => handleSelect(conn)}
                 />
                 {expandedId === conn.id && connectedSessionId && (
-                  <DBTree connectionId={conn.id} />
+                  <div className="pl-4 border-l border-border ml-4 mt-1">
+                    <DBTree connectionId={conn.id} />
+                  </div>
                 )}
               </div>
             ))
@@ -120,10 +133,15 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: Si
         </div>
       </section>
 
-      <footer className="sidebar-footer">
-        <button className="sidebar-add-btn" onClick={onNewConnection}>
-          + New Connection
-        </button>
+      <footer className="p-3 border-t border-border">
+        <Button 
+          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted" 
+          variant="ghost"
+          onClick={onNewConnection}
+        >
+          <Plus size={16} className="mr-2" />
+          New Connection
+        </Button>
       </footer>
     </aside>
   );

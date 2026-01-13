@@ -5,7 +5,6 @@ import { json } from '@codemirror/lang-json';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap } from '@codemirror/commands';
 import { useTheme } from '../../hooks/useTheme';
-import './MongoEditor.css';
 
 interface MongoEditorProps {
   value: string;
@@ -73,6 +72,10 @@ export function MongoEditor({
         }
       }),
       EditorView.editable.of(!readOnly),
+      EditorView.theme({
+        "&": { height: "100%" },
+        ".cm-scroller": { overflow: "auto" },
+      })
     ];
 
     if (isDark) {
@@ -110,6 +113,6 @@ export function MongoEditor({
   }, [value]);
 
   return (
-    <div className="mongo-editor" ref={editorRef} />
+    <div className="flex-1 overflow-hidden h-full text-base" ref={editorRef} />
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Namespace, Collection, listNamespaces, listCollections } from '../../lib/tauri';
-import './DBTree.css';
+import { Folder, FolderOpen, Table, Eye, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DBTreeProps {
   connectionId: string;
@@ -12,7 +13,7 @@ export function DBTree({ connectionId }: DBTreeProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // TODO: Get sessionId from connection - for now this is a placeholder
+  // TODO: Get sessionId from connection
   const sessionId = connectionId;
 
   useEffect(() => {
@@ -59,42 +60,58 @@ export function DBTree({ connectionId }: DBTreeProps) {
   }
 
   if (loading) {
-    return <div className="tree-loading">Loading...</div>;
+    return (
+      <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground animate-pulse">
+        <Loader2 size={14} className="animate-spin" /> Loading...
+      </div>
+    );
   }
 
   return (
-    <div className="db-tree">
-      {namespaces.map(ns => (
-        <div key={getNsKey(ns)} className="tree-namespace">
-          <button
-            className="tree-node"
-            onClick={() => handleExpandNamespace(ns)}
-          >
-            <span className="tree-icon">
-              {expandedNs === getNsKey(ns) ? '📂' : '📁'}
-            </span>
-            <span className="tree-label truncate">
-              {ns.schema ? `${ns.database}.${ns.schema}` : ns.database}
-            </span>
-          </button>
-          
-          {expandedNs === getNsKey(ns) && (
-            <div className="tree-children">
-              {collections.map(col => (
-                <button
-                  key={col.name}
-                  className="tree-node tree-leaf"
-                >
-                  <span className="tree-icon">
-                    {col.collection_type === 'View' ? '👁️' : '📄'}
-                  </span>
-                  <span className="tree-label truncate">{col.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+    <div className="flex flex-col text-sm">
+      {namespaces.map(ns => {
+        const key = getNsKey(ns);
+        const isExpanded = expandedNs === key;
+        
+        return (
+          <div key={key}>
+            <button
+              className={cn(
+                "flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-accent/10 transition-colors text-left",
+                isExpanded ? "text-foreground" : "text-muted-foreground"
+              )}
+              onClick={() => handleExpandNamespace(ns)}
+            >
+              <span className="shrink-0">
+                {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+              </span>
+              <span className="truncate flex-1">
+                {ns.schema ? `${ns.database}.${ns.schema}` : ns.database}
+              </span>
+            </button>
+            
+            {isExpanded && (
+              <div className="flex flex-col ml-2 pl-2 border-l border-border mt-0.5 space-y-0.5">
+                {collections.length === 0 ? (
+                  <div className="px-2 py-1 text-xs text-muted-foreground italic">No collections</div>
+                ) : (
+                  collections.map(col => (
+                    <button
+                      key={col.name}
+                      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-left"
+                    >
+                      <span className="shrink-0">
+                        {col.collection_type === 'View' ? <Eye size={13} /> : <Table size={13} />}
+                      </span>
+                      <span className="truncate font-mono text-xs">{col.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

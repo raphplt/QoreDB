@@ -1,5 +1,6 @@
 import { SavedConnection } from '../../lib/tauri';
-import './ConnectionItem.css';
+import { Loader2, ChevronRight, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ConnectionItemProps {
   connection: SavedConnection;
@@ -28,15 +29,33 @@ export function ConnectionItem({
 
   return (
     <button
-      className={`connection-item ${isSelected ? 'selected' : ''} ${isConnected ? 'connected' : ''}`}
+      className={cn(
+        "group w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-all select-none",
+        "hover:bg-accent/10 hover:text-accent-foreground",
+        isSelected && !isConnected && "bg-muted text-foreground",
+        isSelected && isConnected && "bg-accent/15 text-accent font-medium",
+        !isSelected && "text-muted-foreground"
+      )}
       onClick={onSelect}
       disabled={isConnecting}
     >
-      <span className="connection-icon">{icon}</span>
-      <span className="connection-name truncate">{connection.name}</span>
-      {isConnecting && <span className="connection-status">⏳</span>}
-      {isConnected && !isConnecting && <span className="connection-status connected">●</span>}
-      <span className="connection-chevron">{isExpanded ? '▼' : '▶'}</span>
+      <span className="shrink-0 text-base opacity-80 group-hover:opacity-100">
+        {icon}
+      </span>
+      
+      <span className="flex-1 truncate text-left">
+        {connection.name}
+      </span>
+      
+      {isConnecting ? (
+        <Loader2 size={14} className="animate-spin text-muted-foreground" />
+      ) : isConnected && !isConnecting ? (
+        <span className="w-2 h-2 rounded-full bg-success shadow-sm shadow-success/50" />
+      ) : null}
+      
+      <div className={cn("text-muted-foreground/50", isExpanded && "transform rotate-90")}>
+        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      </div>
     </button>
   );
 }

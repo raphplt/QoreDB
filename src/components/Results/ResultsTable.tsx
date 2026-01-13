@@ -1,14 +1,11 @@
-import { List, type RowComponentProps } from 'react-window';
-import { QueryResult, Row } from '../../lib/tauri';
-import './ResultsTable.css';
+import { QueryResult } from '../../lib/tauri';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 interface ResultsTableProps {
   result: QueryResult | null;
   height?: number;
 }
-
-const ROW_HEIGHT = 32;
-const HEADER_HEIGHT = 36;
 
 function formatValue(value: unknown): string {
   if (value === null) return 'NULL';
@@ -18,56 +15,67 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
-type RowExtraProps = { rows: Row[] };
-
-function RowRenderer({ index, style, rows }: RowComponentProps<RowExtraProps>) {
-  const row = rows[index];
-
-  return (
-    <div className="results-row" style={style}>
-      {row.values.map((value: unknown, colIndex: number) => (
-        <div key={colIndex} className="results-cell">
-          {formatValue(value)}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function ResultsTable({ result, height = 400 }: ResultsTableProps) {
   if (!result || result.columns.length === 0) {
     if (result?.affected_rows !== undefined) {
       return (
-        <div className="results-message">
-          <span className="results-success">✓</span>
+        <div className="flex items-center gap-2 p-4 text-sm text-success bg-success/10 border border-success/20 rounded-md">
+          <Check size={16} />
           {result.affected_rows} row(s) affected in {result.execution_time_ms}ms
         </div>
       );
     }
-    return <div className="results-empty">No results to display</div>;
+    return (
+      <div className="flex items-center justify-center p-8 text-muted-foreground text-sm border rounded-md border-dashed">
+        No results to display
+      </div>
+    );
   }
 
   const { columns, rows } = result;
 
   return (
-    <div className="results-table" style={{ height }}>
-      <div className="results-header">
+    <div className="flex flex-col h-full border border-border rounded-md overflow-hidden bg-background" style={{ height }}>
+      {/* Header */}
+      <div className="flex items-center bg-muted/50 border-b border-border h-[36px] shrink-0">
         {columns.map((col, i) => (
-          <div key={i} className="results-header-cell" title={col.data_type}>
+          <div 
+            key={i} 
+            className="flex-1 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate border-r border-border last:border-r-0" 
+            title={col.data_type}
+          >
             {col.name}
           </div>
         ))}
       </div>
 
-      <List
-        rowCount={rows.length}
-        rowHeight={ROW_HEIGHT}
-        rowComponent={RowRenderer}
-        rowProps={{ rows }}
-        style={{ height: height - HEADER_HEIGHT, width: '100%' }}
-      />
+      {/* Rows (Simple overflow, no virtualization for stability) */}
+      <div className="flex-1 overflow-auto bg-background">
+        {rows.map((row, rowIndex) => (
+          <div 
+            key={rowIndex}
+            className="flex items-center border-b border-border hover:bg-muted/30 transition-colors text-sm font-mono h-[32px]" 
+          >
+            {row.values.map((value: unknown, colIndex: number) => (
+              <div 
+                key={colIndex} 
+                className={cn(
+                  "flex-1 px-3 py-1 truncate border-r border-border last:border-r-0 h-full flex items-center",
+                  value === null && "text-muted-foreground italic",
+                  typeof value === 'number' && "text-right justify-end",
+                  typeof value === 'boolean' && "text-center justify-center text-accent"
+                )}
+                title={String(value)}
+              >
+                {formatValue(value)}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
 
-      <div className="results-footer">
+      {/* Footer */}
+      <div className="px-3 py-1 text-xs text-muted-foreground border-t border-border bg-muted/20 shrink-0">
         {rows.length} row(s) • {result.execution_time_ms}ms
       </div>
     </div>

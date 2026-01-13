@@ -5,7 +5,10 @@ import {
   saveConnection, 
   ConnectionConfig 
 } from '../../lib/tauri';
-import './ConnectionModal.css';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Check, X, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ConnectionModalProps {
   isOpen: boolean;
@@ -38,10 +41,11 @@ const DRIVER_LABELS: Record<Driver, string> = {
   mongodb: 'MongoDB',
 };
 
+// Simple text icons until we have proper Lucide equivalents for DBs
 const DRIVER_ICONS: Record<Driver, string> = {
-  postgres: '🐘',
-  mysql: '🐬',
-  mongodb: '🍃',
+  postgres: 'PG',
+  mysql: 'MY',
+  mongodb: 'MG',
 };
 
 const initialFormData: FormData = {
@@ -62,7 +66,6 @@ export function ConnectionModal({ isOpen, onClose, onConnected }: ConnectionModa
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormData(initialFormData);
@@ -71,7 +74,6 @@ export function ConnectionModal({ isOpen, onClose, onConnected }: ConnectionModa
     }
   }, [isOpen]);
 
-  // Update port when driver changes
   function handleDriverChange(driver: Driver) {
     setFormData(prev => ({
       ...prev,
@@ -135,7 +137,6 @@ export function ConnectionModal({ isOpen, onClose, onConnected }: ConnectionModa
         ssl: formData.ssl,
       };
 
-      // Save to vault
       const connectionId = `conn_${Date.now()}`;
       await saveConnection({
         id: connectionId,
@@ -150,7 +151,6 @@ export function ConnectionModal({ isOpen, onClose, onConnected }: ConnectionModa
         project_id: 'default',
       });
 
-      // Connect
       const connectResult = await connect(config);
       
       if (connectResult.success && connectResult.session_id) {
@@ -171,135 +171,143 @@ export function ConnectionModal({ isOpen, onClose, onConnected }: ConnectionModa
   const isValid = formData.host && formData.username && formData.password;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <header className="modal-header">
-          <h2>New Connection</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-background border border-border rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+        <header className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="text-lg font-semibold">New Connection</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+            <X size={18} />
+          </Button>
         </header>
 
-        <div className="modal-body">
+        <div className="p-6 space-y-6 overflow-y-auto">
           {/* Driver Selection */}
-          <div className="driver-select">
+          <div className="grid grid-cols-3 gap-3">
             {(Object.keys(DRIVER_LABELS) as Driver[]).map(driver => (
               <button
                 key={driver}
-                className={`driver-btn ${formData.driver === driver ? 'active' : ''}`}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-3 rounded-md border transition-all hover:bg-muted",
+                  formData.driver === driver 
+                    ? "border-accent bg-accent/5 text-accent" 
+                    : "border-border bg-background"
+                )}
                 onClick={() => handleDriverChange(driver)}
               >
-                <span className="driver-icon">{DRIVER_ICONS[driver]}</span>
-                <span className="driver-label">{DRIVER_LABELS[driver]}</span>
+                <div className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm",
+                  formData.driver === driver ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+                )}>
+                  {DRIVER_ICONS[driver]}
+                </div>
+                <span className="text-xs font-medium">{DRIVER_LABELS[driver]}</span>
               </button>
             ))}
           </div>
 
-          {/* Connection Name */}
-          <div className="form-field">
-            <label>Connection Name</label>
-            <input
-              type="text"
-              placeholder="My Database"
-              value={formData.name}
-              onChange={e => handleChange('name', e.target.value)}
-            />
-          </div>
-
-          {/* Host & Port */}
-          <div className="form-row">
-            <div className="form-field flex-2">
-              <label>Host *</label>
-              <input
-                type="text"
-                placeholder="localhost"
-                value={formData.host}
-                onChange={e => handleChange('host', e.target.value)}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Connection Name</label>
+              <Input
+                placeholder="My Database"
+                value={formData.name}
+                onChange={e => handleChange('name', e.target.value)}
               />
             </div>
-            <div className="form-field flex-1">
-              <label>Port</label>
-              <input
-                type="number"
-                value={formData.port}
-                onChange={e => handleChange('port', parseInt(e.target.value) || 0)}
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2 space-y-2">
+                <label className="text-sm font-medium">Host <span className="text-error">*</span></label>
+                <Input
+                  placeholder="localhost"
+                  value={formData.host}
+                  onChange={e => handleChange('host', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Port</label>
+                <Input
+                  type="number"
+                  value={formData.port}
+                  onChange={e => handleChange('port', parseInt(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Username <span className="text-error">*</span></label>
+                <Input
+                  placeholder="user"
+                  value={formData.username}
+                  onChange={e => handleChange('username', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password <span className="text-error">*</span></label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Database</label>
+              <Input
+                placeholder={formData.driver === 'postgres' ? 'postgres' : ''}
+                value={formData.database}
+                onChange={e => handleChange('database', e.target.value)}
               />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="ssl"
+                className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                checked={formData.ssl}
+                onChange={e => handleChange('ssl', e.target.checked)}
+              />
+              <label htmlFor="ssl" className="text-sm font-medium cursor-pointer">Use SSL/TLS</label>
             </div>
           </div>
 
-          {/* Username & Password */}
-          <div className="form-row">
-            <div className="form-field">
-              <label>Username *</label>
-              <input
-                type="text"
-                placeholder="user"
-                value={formData.username}
-                onChange={e => handleChange('username', e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label>Password *</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={e => handleChange('password', e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Database */}
-          <div className="form-field">
-            <label>Database</label>
-            <input
-              type="text"
-              placeholder={formData.driver === 'postgres' ? 'postgres' : ''}
-              value={formData.database}
-              onChange={e => handleChange('database', e.target.value)}
-            />
-          </div>
-
-          {/* SSL Toggle */}
-          <div className="form-field-inline">
-            <input
-              type="checkbox"
-              id="ssl"
-              checked={formData.ssl}
-              onChange={e => handleChange('ssl', e.target.checked)}
-            />
-            <label htmlFor="ssl">Use SSL/TLS</label>
-          </div>
-
-          {/* Error / Success Message */}
           {error && (
-            <div className="form-message error">
-              <span>✕</span> {error}
+            <div className="p-3 rounded-md bg-error/10 border border-error/20 text-error text-sm flex items-center gap-2">
+              <X size={14} />
+              {error}
             </div>
           )}
           {testResult === 'success' && (
-            <div className="form-message success">
-              <span>✓</span> Connection successful!
+            <div className="p-3 rounded-md bg-success/10 border border-success/20 text-success text-sm flex items-center gap-2">
+              <Check size={14} />
+              Connection successful!
             </div>
           )}
         </div>
 
-        <footer className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>
+        <footer className="p-4 border-t border-border bg-muted/20 flex justify-end gap-2 rounded-b-lg">
+          <Button variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            className="btn-secondary"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleTestConnection}
             disabled={!isValid || testing}
           >
-            {testing ? 'Testing...' : 'Test Connection'}
-          </button>
-          <button
-            className="btn-primary"
+            {testing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Test Connection
+          </Button>
+          <Button
             onClick={handleSaveAndConnect}
             disabled={!isValid || connecting}
           >
-            {connecting ? 'Connecting...' : 'Save & Connect'}
-          </button>
+            {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save & Connect
+          </Button>
         </footer>
       </div>
     </div>

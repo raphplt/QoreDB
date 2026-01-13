@@ -5,7 +5,6 @@ import { sql, PostgreSQL, MySQL } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap } from '@codemirror/commands';
 import { useTheme } from '../../hooks/useTheme';
-import './SQLEditor.css';
 
 interface SQLEditorProps {
   value: string;
@@ -74,6 +73,10 @@ export function SQLEditor({
         }
       }),
       EditorView.editable.of(!readOnly),
+      EditorView.theme({
+        "&": { height: "100%" },
+        ".cm-scroller": { overflow: "auto" },
+      })
     ];
 
     // Add dark theme if needed
@@ -113,6 +116,6 @@ export function SQLEditor({
   }, [value]);
 
   return (
-    <div className="sql-editor" ref={editorRef} />
+    <div className="flex-1 overflow-hidden h-full text-base" ref={editorRef} />
   );
 }

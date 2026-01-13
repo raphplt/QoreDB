@@ -4,7 +4,8 @@ import { MongoEditor, MONGO_TEMPLATES } from '../Editor/MongoEditor';
 import { ResultsTable } from '../Results/ResultsTable';
 import { JSONViewer } from '../Results/JSONViewer';
 import { executeQuery, cancelQuery, QueryResult } from '../../lib/tauri';
-import './QueryPanel.css';
+import { Button } from '@/components/ui/button';
+import { Play, Square, AlertCircle } from 'lucide-react';
 
 interface QueryPanelProps {
   sessionId: string | null;
@@ -64,30 +65,37 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
   }, [sessionId, loading]);
 
   return (
-    <div className="query-panel">
+    <div className="flex flex-col h-full bg-background rounded-lg border border-border shadow-sm overflow-hidden">
       {/* Toolbar */}
-      <div className="query-toolbar">
-        <button
-          className="query-btn primary"
+      <div className="flex items-center gap-2 p-2 border-b border-border bg-muted/20">
+        <Button
           onClick={() => handleExecute()}
           disabled={loading || !sessionId}
+          className="w-24 gap-2"
         >
-          {loading ? '⏳ Running...' : '▶ Run'}
-        </button>
+          {loading ? (
+             <span className="flex items-center gap-2">Running...</span>
+          ) : (
+            <>
+              <Play size={16} className="fill-current" /> Run
+            </>
+          )}
+        </Button>
 
         {loading && (
-          <button
-            className="query-btn danger"
+          <Button
+            variant="destructive"
             onClick={handleCancel}
             disabled={cancelling}
+            className="w-24 gap-2"
           >
-            {cancelling ? 'Stopping...' : '⏹ Stop'}
-          </button>
+            <Square size={16} className="fill-current" /> Stop
+          </Button>
         )}
 
         {isMongo && (
           <select
-            className="query-template-select"
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             onChange={(e) => setQuery(MONGO_TEMPLATES[e.target.value as keyof typeof MONGO_TEMPLATES] || query)}
             defaultValue=""
           >
@@ -101,17 +109,21 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
           </select>
         )}
 
-        <span className="query-hint">
+        <div className="flex-1" />
+
+        <span className="text-xs text-muted-foreground hidden sm:inline-block">
           Cmd+Enter to run{!isMongo && ' • Select text to run partial'}
         </span>
 
         {!sessionId && (
-          <span className="query-warning">⚠ No connection</span>
+          <span className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded-full border border-warning/20">
+            <AlertCircle size={12} /> No connection
+          </span>
         )}
       </div>
 
       {/* Editor - SQL or MongoDB */}
-      <div className="query-editor">
+      <div className="flex-1 min-h-[200px] border-b border-border relative">
         {isMongo ? (
           <MongoEditor
             value={query}
@@ -132,24 +144,22 @@ export function QueryPanel({ sessionId, dialect = 'postgres' }: QueryPanelProps)
       </div>
 
       {/* Results / Error */}
-      <div className="query-results">
-        {error && (
-          <div className="query-error">
-            <span className="error-icon">✕</span>
-            {error}
+      <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden relative">
+        {error ? (
+          <div className="p-4 m-4 rounded-md bg-error/10 border border-error/20 text-error flex items-start gap-3">
+            <AlertCircle className="mt-0.5 shrink-0" size={18} />
+            <pre className="text-sm font-mono whitespace-pre-wrap break-all">{error}</pre>
           </div>
-        )}
-
-        {!error && result && (
+        ) : result ? (
           isMongo ? (
             <JSONViewer data={result.rows.map(r => r.values[0])} />
           ) : (
-            <ResultsTable result={result} height={300} />
+            <div className="flex-1 overflow-hidden">
+               <ResultsTable result={result} height={400} />
+            </div>
           )
-        )}
-
-        {!error && !result && (
-          <div className="query-empty">
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             Run a query to see results
           </div>
         )}
