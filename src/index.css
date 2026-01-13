@@ -109,3 +109,7 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--q-text-2);
 }
+
+button {
+  cursor: pointer;
+}

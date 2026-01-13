@@ -18,3 +18,6 @@ Prefer:
 - command palettes
 - shortcuts
 - direct manipulation
+
+Use tailwind and shadcn.
+Never mock anything in frontend (nor backend)

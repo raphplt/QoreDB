@@ -25,7 +25,6 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId }: Si
     loadConnections();
   }, []);
 
-  // Reload connections when modal closes/changes
   useEffect(() => {
     loadConnections();
   }, [connectedSessionId]);
