@@ -41,7 +41,7 @@ interface DatabaseStats {
   sizeFormatted?: string;
   tableCount?: number;
   indexCount?: number;
-  documentCount?: number;  // MongoDB
+  documentCount?: number;
 }
 
 type Tab = 'overview' | 'tables';
@@ -64,7 +64,6 @@ export function DatabaseBrowser({
   const [error, setError] = useState<string | null>(null);
 
   const driverMeta = getDriverMetadata(driver);
-  const DriverIcon = DRIVER_ICONS[driver] || Database;
 
   useEffect(() => {
     loadData();
@@ -81,53 +80,53 @@ export function DatabaseBrowser({
         setCollections(collectionsResult.collections);
       }
 
-      // Load stats based on driver
       const newStats: DatabaseStats = {
         tableCount: collectionsResult.collections?.length || 0,
       };
 
       if (driverMeta.supportsSQL) {
-        // PostgreSQL
-        if (driver === 'postgres') {
-          const schemaName = namespace.schema || 'public';
-          
-          // Database size
+        const schemaOrDb = namespace.schema || namespace.database;
+        const queries = driverMeta.queries;
+
+        // Database/schema size
+        if (queries.databaseSizeQuery) {
           try {
-            const sizeQuery = `SELECT pg_size_pretty(pg_database_size(current_database())) as size`;
+            const sizeQuery = queries.databaseSizeQuery(schemaOrDb);
             const sizeResult = await executeQuery(sessionId, sizeQuery);
             if (sizeResult.success && sizeResult.result?.rows[0]) {
-              newStats.sizeFormatted = sizeResult.result.rows[0].values[0] as string;
+              const rawValue = sizeResult.result.rows[0].values[0];
+              if (typeof rawValue === 'string') {
+                newStats.sizeFormatted = rawValue;
+              } else if (typeof rawValue === 'number') {
+                newStats.sizeBytes = rawValue;
+                newStats.sizeFormatted = formatBytes(rawValue);
+              } else if (rawValue !== null) {
+                const bytes = parseFloat(String(rawValue)) || 0;
+                if (bytes > 0) {
+                  newStats.sizeBytes = bytes;
+                  newStats.sizeFormatted = formatBytes(bytes);
+                }
+              }
             }
-          } catch { /* ignore */ }
+          } catch (err) {
+            console.error('[DatabaseBrowser] Size query error:', err);
+          }
+        }
 
-          // Index count
+        // Index count
+        if (queries.indexCountQuery) {
           try {
-            const indexQuery = `
-              SELECT COUNT(*) as cnt FROM pg_indexes WHERE schemaname = '${schemaName}'
-            `;
+            const indexQuery = queries.indexCountQuery(schemaOrDb);
             const indexResult = await executeQuery(sessionId, indexQuery);
             if (indexResult.success && indexResult.result?.rows[0]) {
-              newStats.indexCount = indexResult.result.rows[0].values[0] as number;
+              const rawValue = indexResult.result.rows[0].values[0];
+              newStats.indexCount = typeof rawValue === 'number' 
+                ? rawValue 
+                : parseInt(String(rawValue), 10) || 0;
             }
-          } catch { /* ignore */ }
-        }
-        // MySQL
-        else if (driver === 'mysql') {
-          try {
-            const statsQuery = `
-              SELECT 
-                SUM(data_length + index_length) as total_size,
-                SUM(index_length) as index_size
-              FROM information_schema.tables 
-              WHERE table_schema = '${namespace.database}'
-            `;
-            const statsResult = await executeQuery(sessionId, statsQuery);
-            if (statsResult.success && statsResult.result?.rows[0]) {
-              const row = statsResult.result.rows[0].values;
-              newStats.sizeBytes = row[0] as number;
-              newStats.sizeFormatted = formatBytes(row[0] as number);
-            }
-          } catch { /* ignore */ }
+          } catch (err) {
+            console.error('[DatabaseBrowser] Index query error:', err);
+          }
         }
       }
 
@@ -150,13 +149,16 @@ export function DatabaseBrowser({
     ? `${namespace.database}.${namespace.schema}` 
     : namespace.database;
 
+  const iconSrc = `/databases/${DRIVER_ICONS[driver]}`;
+
+
   return (
     <div className="flex flex-col h-full bg-background rounded-lg border border-border shadow-sm overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-md bg-accent/10 text-accent">
-            <DriverIcon size={18} />
+            <img src={iconSrc} alt={DRIVER_LABELS[driver]} className="w-4 h-4"/>
           </div>
           <div>
             <h2 className="font-semibold text-foreground flex items-center gap-2">

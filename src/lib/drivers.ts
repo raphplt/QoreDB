@@ -7,6 +7,20 @@
 
 export type Driver = 'postgres' | 'mysql' | 'mongodb';
 
+/** Query builder functions for driver-specific SQL/commands */
+export interface DriverQueryBuilders {
+  /** Query to get database/schema total size */
+  databaseSizeQuery?: (schemaOrDb: string) => string;
+  /** Query to get table size and row count */
+  tableSizeQuery?: (schemaOrDb: string, tableName: string) => string;
+  /** Query to get index count for a database/schema */
+  indexCountQuery?: (schemaOrDb: string) => string;
+  /** Query to get table indexes */
+  tableIndexesQuery?: (tableName: string) => string;
+  /** Query to get maintenance info (vacuum, analyze) */
+  maintenanceQuery?: (schemaOrDb: string, tableName: string) => string;
+}
+
 export interface DriverMetadata {
   id: Driver;
   label: string;
@@ -25,6 +39,8 @@ export interface DriverMetadata {
   // Capabilities
   supportsSchemas: boolean;
   supportsSQL: boolean;
+  // Query builders
+  queries: DriverQueryBuilders;
 }
 
 export const DRIVERS: Record<Driver, DriverMetadata> = {
@@ -42,6 +58,20 @@ export const DRIVERS: Record<Driver, DriverMetadata> = {
     databaseFieldLabel: 'connection.databaseInitial',
     supportsSchemas: true,
     supportsSQL: true,
+    queries: {
+      databaseSizeQuery: () => 
+        `SELECT pg_size_pretty(pg_database_size(current_database())) as size`,
+      tableSizeQuery: (schema, table) =>
+        `SELECT pg_total_relation_size('"${schema}"."${table}"') as total_bytes,
+                pg_size_pretty(pg_total_relation_size('"${schema}"."${table}"')) as size_pretty`,
+      indexCountQuery: (schema) =>
+        `SELECT COUNT(*) as cnt FROM pg_indexes WHERE schemaname = '${schema}'`,
+      tableIndexesQuery: (table) =>
+        `SELECT indexname, indexdef FROM pg_indexes WHERE tablename = '${table}'`,
+      maintenanceQuery: (schema, table) =>
+        `SELECT last_vacuum, last_analyze FROM pg_stat_user_tables 
+         WHERE schemaname = '${schema}' AND relname = '${table}'`,
+    },
   },
   mysql: {
     id: 'mysql',
@@ -57,6 +87,20 @@ export const DRIVERS: Record<Driver, DriverMetadata> = {
     databaseFieldLabel: 'connection.database',
     supportsSchemas: false,
     supportsSQL: true,
+    queries: {
+      databaseSizeQuery: (db) =>
+        `SELECT COALESCE(SUM(IFNULL(data_length, 0) + IFNULL(index_length, 0)), 0) as size
+         FROM information_schema.tables WHERE table_schema = '${db}'`,
+      tableSizeQuery: (db, table) =>
+        `SELECT data_length + index_length as total_bytes, table_rows
+         FROM information_schema.tables 
+         WHERE table_schema = '${db}' AND table_name = '${table}'`,
+      indexCountQuery: (db) =>
+        `SELECT COUNT(DISTINCT index_name) as cnt 
+         FROM information_schema.statistics WHERE table_schema = '${db}'`,
+      tableIndexesQuery: (table) => 
+        `SHOW INDEX FROM \`${table}\``,
+    },
   },
   mongodb: {
     id: 'mongodb',
@@ -72,6 +116,8 @@ export const DRIVERS: Record<Driver, DriverMetadata> = {
     databaseFieldLabel: 'connection.database',
     supportsSchemas: false,
     supportsSQL: false,
+    queries: {
+    },
   },
 };
 

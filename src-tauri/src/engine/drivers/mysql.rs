@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use async_trait::async_trait;
+use rust_decimal::Decimal;
 use sqlx::mysql::{MySql, MySqlPool, MySqlPoolOptions, MySqlRow};
 use sqlx::pool::PoolConnection;
 use sqlx::{Column, Row, TypeInfo};
@@ -128,6 +129,12 @@ impl MySqlDriver {
         }
         if let Ok(v) = row.try_get::<Option<f32>, _>(idx) {
             return v.map(|f| Value::Float(f as f64)).unwrap_or(Value::Null);
+        }
+        if let Ok(v) = row.try_get::<Option<Decimal>, _>(idx) {
+            return v.map(|d| {
+                use rust_decimal::prelude::ToPrimitive;
+                Value::Float(d.to_f64().unwrap_or(0.0))
+            }).unwrap_or(Value::Null);
         }
         if let Ok(v) = row.try_get::<Option<String>, _>(idx) {
             return v.map(Value::Text).unwrap_or(Value::Null);
