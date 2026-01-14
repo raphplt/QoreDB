@@ -17,7 +17,8 @@ import {
   Value, 
   Namespace,
   deleteRow,
-  RowData as TauriRowData 
+  RowData as TauriRowData,
+  Environment
 } from '../../lib/tauri';
 import { cn } from '@/lib/utils';
 import { 
@@ -37,6 +38,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
 
 interface DataGridProps {
   result: QueryResult | null;
@@ -45,6 +47,10 @@ interface DataGridProps {
   namespace?: Namespace;
   tableName?: string;
   primaryKey?: string[];
+  environment?: Environment;
+  readOnly?: boolean;
+  connectionName?: string;
+  connectionDatabase?: string;
   onRowsDeleted?: () => void;
   onRowClick?: (row: RowData) => void;
 }
@@ -82,6 +88,10 @@ export function DataGrid({
   namespace,
   tableName,
   primaryKey,
+  environment = 'development',
+  readOnly = false,
+  connectionName,
+  connectionDatabase,
   onRowsDeleted,
   onRowClick
 }: DataGridProps) {
@@ -94,8 +104,10 @@ export function DataGrid({
   });
   const [copied, setCopied] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   
   const parentRef = useRef<HTMLDivElement>(null);
+  const confirmationLabel = (connectionDatabase || connectionName || 'PROD').trim() || 'PROD';
 
   const data = useMemo(() => {
     if (!result) return [];
@@ -206,13 +218,16 @@ export function DataGrid({
   });
 
   // Handle Deletion
-  async function handleDelete() {
+  async function performDelete() {
     if (!sessionId || !namespace || !tableName || !primaryKey || primaryKey.length === 0) return;
     
     const selectedRows = table.getSelectedRowModel().rows;
     if (selectedRows.length === 0) return;
 
-    if (!confirm(t('grid.confirmDelete', { count: selectedRows.length }))) return;
+    if (readOnly) {
+      toast.error(t('environment.blocked'));
+      return;
+    }
 
     setIsDeleting(true);
     let successCount = 0;
@@ -260,6 +275,24 @@ export function DataGrid({
     if (failCount > 0) {
       toast.error(t('grid.deleteError', { count: failCount }));
     }
+  }
+
+  function handleDelete() {
+    const selectedRows = table.getSelectedRowModel().rows;
+    if (selectedRows.length === 0) return;
+
+    if (readOnly) {
+      toast.error(t('environment.blocked'));
+      return;
+    }
+
+    if (environment === 'production') {
+      setConfirmOpen(true);
+      return;
+    }
+
+    if (!confirm(t('grid.confirmDelete', { count: selectedRows.length }))) return;
+    void performDelete();
   }
 
   // Copy functionality
@@ -343,6 +376,7 @@ export function DataGrid({
 
   const selectedCount = Object.keys(rowSelection).length;
   const canDelete = sessionId && tableName && primaryKey && primaryKey.length > 0 && selectedCount > 0;
+  const deleteDisabled = readOnly || isDeleting;
 
   return (
     <div className="flex flex-col gap-2 h-full min-h-0" data-datagrid>
@@ -381,7 +415,8 @@ export function DataGrid({
               size="sm"
               className="h-6 px-2 text-xs"
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={deleteDisabled}
+              title={readOnly ? t('environment.blocked') : undefined}
             >
               <Trash2 size={12} className="mr-1" />
               {isDeleting ? t('grid.deleting') : t('grid.delete')}
@@ -565,6 +600,16 @@ export function DataGrid({
           </Button>
         </div>
       </div>
+
+      <ProductionConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={t('environment.confirmTitle')}
+        description={t('grid.confirmDelete', { count: selectedCount })}
+        confirmationLabel={confirmationLabel}
+        confirmLabel={t('common.confirm')}
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

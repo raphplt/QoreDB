@@ -17,6 +17,7 @@ export interface ConnectionConfig {
   password: string;
   database?: string;
   ssl: boolean;
+  read_only?: boolean;
   ssh_tunnel?: SshTunnelConfig;
 }
 

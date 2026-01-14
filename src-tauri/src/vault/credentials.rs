@@ -100,6 +100,7 @@ impl SavedConnection {
             password: creds.db_password.clone(),
             database: self.database.clone(),
             ssl: self.ssl,
+            read_only: self.read_only,
             ssh_tunnel,
         }
     }

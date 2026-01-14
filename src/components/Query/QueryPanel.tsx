@@ -9,18 +9,31 @@ import { executeQuery, cancelQuery, QueryResult, Environment } from '../../lib/t
 import { addToHistory } from '../../lib/history';
 import { logError } from '../../lib/errorLog';
 import { Button } from '@/components/ui/button';
-import { Play, Square, AlertCircle, History, Shield } from 'lucide-react';
-import { ENVIRONMENT_CONFIG } from '../../lib/environment';
+import { Play, Square, AlertCircle, History, Shield, Lock } from 'lucide-react';
+import { ENVIRONMENT_CONFIG, isDangerousQuery, isMutationQuery } from '../../lib/environment';
 import { Driver } from '../../lib/drivers';
+import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
+import { toast } from 'sonner';
 
 interface QueryPanelProps {
   sessionId: string | null;
   dialect?: Driver;
   environment?: Environment;
+  readOnly?: boolean;
+  connectionName?: string;
+  connectionDatabase?: string;
   initialQuery?: string;
 }
 
-export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'development', initialQuery }: QueryPanelProps) {
+export function QueryPanel({
+  sessionId,
+  dialect = 'postgres',
+  environment = 'development',
+  readOnly = false,
+  connectionName,
+  connectionDatabase,
+  initialQuery,
+}: QueryPanelProps) {
   const { t } = useTranslation();
   const isMongo = dialect === 'mongodb';
   const defaultQuery = isMongo ? MONGO_TEMPLATES.find : 'SELECT 1;';
@@ -31,6 +44,9 @@ export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'dev
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+  const [confirmDescription, setConfirmDescription] = useState<string | null>(null);
 
   // Update query when initialQuery prop changes
   useEffect(() => {
@@ -41,14 +57,11 @@ export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'dev
 
   const envConfig = ENVIRONMENT_CONFIG[environment];
 
-  const handleExecute = useCallback(async (queryText?: string) => {
+  const runQuery = useCallback(async (queryToRun: string) => {
     if (!sessionId) {
       setError(t('query.noConnectionError'));
       return;
     }
-
-    const queryToRun = queryText || query;
-    if (!queryToRun.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -98,7 +111,50 @@ export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'dev
     } finally {
       setLoading(false);
     }
-  }, [sessionId, query, dialect, t]);
+  }, [sessionId, dialect, t]);
+
+  const handleExecute = useCallback(async (queryText?: string) => {
+    if (!sessionId) {
+      setError(t('query.noConnectionError'));
+      return;
+    }
+
+    const queryToRun = queryText || query;
+    if (!queryToRun.trim()) return;
+
+    const isMutation = isMutationQuery(queryToRun, isMongo ? 'mongodb' : 'sql');
+
+    if (readOnly && isMutation) {
+      toast.error(t('environment.blocked'));
+      return;
+    }
+
+    if (environment === 'production' && isMutation) {
+      const isDangerous = !isMongo && isDangerousQuery(queryToRun);
+      setPendingQuery(queryToRun);
+      setConfirmDescription(isDangerous ? t('environment.dangerousQuery') : null);
+      setConfirmOpen(true);
+      return;
+    }
+
+    if (!isMongo && environment !== 'production' && isDangerousQuery(queryToRun)) {
+      toast(t('environment.dangerousQuery'));
+    }
+
+    await runQuery(queryToRun);
+  }, [sessionId, query, isMongo, readOnly, environment, t, runQuery]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!pendingQuery) {
+      setConfirmOpen(false);
+      return;
+    }
+
+    const queryToRun = pendingQuery;
+    setPendingQuery(null);
+    setConfirmOpen(false);
+    await runQuery(queryToRun);
+  }, [pendingQuery, runQuery]);
 
   const handleCancel = useCallback(async () => {
     if (!sessionId || !loading) return;
@@ -144,6 +200,13 @@ export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'dev
           >
             <Shield size={12} />
             {envConfig.labelShort}
+          </span>
+        )}
+
+        {sessionId && readOnly && (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border border-warning/30 bg-warning/10 text-warning">
+            <Lock size={12} />
+            {t('environment.readOnly')}
           </span>
         )}
 
@@ -248,6 +311,22 @@ export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'dev
         onClose={() => setHistoryOpen(false)}
         onSelectQuery={setQuery}
         sessionId={sessionId || undefined}
+      />
+
+      <ProductionConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setPendingQuery(null);
+            setConfirmDescription(null);
+          }
+        }}
+        title={t('environment.confirmTitle')}
+        description={confirmDescription || undefined}
+        confirmationLabel={(connectionDatabase || connectionName || 'PROD').trim() || 'PROD'}
+        confirmLabel={t('common.confirm')}
+        onConfirm={handleConfirm}
       />
     </div>
   );

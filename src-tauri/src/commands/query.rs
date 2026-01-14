@@ -8,6 +8,66 @@ use uuid::Uuid;
 
 use crate::engine::{TableSchema, types::{Collection, Namespace, QueryResult, SessionId}};
 
+const READ_ONLY_BLOCKED: &str = "Operation blocked: read-only mode";
+
+fn is_sql_mutation(query: &str) -> bool {
+    const MUTATION_KEYWORDS: [&str; 15] = [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "TRUNCATE",
+        "ALTER",
+        "CREATE",
+        "REPLACE",
+        "MERGE",
+        "GRANT",
+        "REVOKE",
+        "CALL",
+        "EXEC",
+        "EXECUTE",
+        "COPY",
+    ];
+
+    let normalized = query.to_ascii_uppercase();
+    normalized
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+        .any(|token| MUTATION_KEYWORDS.contains(&token))
+}
+
+fn is_mongo_mutation(query: &str) -> bool {
+    let normalized = query.to_ascii_lowercase();
+    [
+        ".insert(",
+        ".insertone(",
+        ".insertmany(",
+        ".update(",
+        ".updateone(",
+        ".updatemany(",
+        ".replaceone(",
+        ".delete(",
+        ".deleteone(",
+        ".deletemany(",
+        ".remove(",
+        ".drop(",
+        ".dropdatabase(",
+        ".bulkwrite(",
+        ".findoneandupdate(",
+        ".findoneanddelete(",
+        ".findoneandreplace(",
+    ]
+    .iter()
+    .any(|pattern| normalized.contains(pattern))
+}
+
+fn is_mutation_query(driver_id: &str, query: &str) -> bool {
+    if driver_id.eq_ignore_ascii_case("mongodb") {
+        is_mongo_mutation(query)
+    } else {
+        is_sql_mutation(query)
+    }
+}
+
 /// Response wrapper for query results
 #[derive(Debug, Serialize)]
 pub struct QueryResponse {
@@ -48,6 +108,17 @@ pub async fn execute_query(
     let state = state.lock().await;
     let session = parse_session_id(&session_id)?;
 
+    let read_only = match state.session_manager.is_read_only(session).await {
+        Ok(read_only) => read_only,
+        Err(e) => {
+            return Ok(QueryResponse {
+                success: false,
+                result: None,
+                error: Some(e.to_string()),
+            });
+        }
+    };
+
     let driver = match state.session_manager.get_driver(session).await {
         Ok(d) => d,
         Err(e) => {
@@ -58,6 +129,14 @@ pub async fn execute_query(
             });
         }
     };
+
+    if read_only && is_mutation_query(driver.driver_id(), &query) {
+        return Ok(QueryResponse {
+            success: false,
+            result: None,
+            error: Some(READ_ONLY_BLOCKED.to_string()),
+        });
+    }
 
     let start_time = std::time::Instant::now();
     match driver.execute(session, &query).await {

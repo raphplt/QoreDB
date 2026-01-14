@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ConnectionItem } from './ConnectionItem';
 import { DBTree } from '../Tree/DBTree';
 import { ErrorLogPanel } from '../Logs/ErrorLogPanel';
-import { listSavedConnections, connect, getConnectionCredentials, SavedConnection, ConnectionConfig, Namespace, Environment } from '../../lib/tauri';
+import { listSavedConnections, connect, getConnectionCredentials, SavedConnection, ConnectionConfig, Namespace } from '../../lib/tauri';
 import { Plus, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ const DEFAULT_PROJECT = 'default';
 
 interface SidebarProps {
   onNewConnection: () => void;
-  onConnected: (sessionId: string, driver: string, environment: Environment) => void;
+  onConnected: (sessionId: string, connection: SavedConnection) => void;
   connectedSessionId: string | null;
   onTableSelect?: (namespace: Namespace, tableName: string) => void;
   onEditConnection: (connection: SavedConnection, password: string) => void;
@@ -67,13 +67,18 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTa
         password: credsResult.password,
         database: conn.database,
         ssl: conn.ssl,
+        read_only: conn.read_only,
       };
 
       const result = await connect(config);
       
       if (result.success && result.session_id) {
         toast.success(t('sidebar.connectedTo', { name: conn.name }));
-        onConnected(result.session_id, conn.driver, conn.environment || 'development');
+        onConnected(result.session_id, {
+          ...conn,
+          environment: conn.environment || 'development',
+          read_only: conn.read_only || false,
+        });
         setExpandedId(conn.id);
       } else {
         toast.error(t('sidebar.connectionToFailed', { name: conn.name }), {

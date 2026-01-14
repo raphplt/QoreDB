@@ -13,61 +13,140 @@ export interface EnvironmentConfig {
 
 export const ENVIRONMENT_CONFIG: Record<Environment, EnvironmentConfig> = {
   development: {
-    color: '#16A34A',
-    bgSoft: 'rgba(22, 163, 74, 0.15)',
+    color: 'var(--q-env-dev)',
+    bgSoft: 'var(--q-env-dev-soft)',
     label: 'Development',
     labelShort: 'DEV',
   },
   staging: {
-    color: '#F59E0B',
-    bgSoft: 'rgba(245, 158, 11, 0.15)',
+    color: 'var(--q-env-staging)',
+    bgSoft: 'var(--q-env-staging-soft)',
     label: 'Staging',
     labelShort: 'STG',
   },
   production: {
-    color: '#DC2626',
-    bgSoft: 'rgba(220, 38, 38, 0.15)',
+    color: 'var(--q-env-prod)',
+    bgSoft: 'var(--q-env-prod-soft)',
     label: 'Production',
     labelShort: 'PROD',
   },
 };
 
+const SQL_MUTATION_KEYWORDS = new Set([
+  'INSERT',
+  'UPDATE',
+  'DELETE',
+  'DROP',
+  'TRUNCATE',
+  'ALTER',
+  'CREATE',
+  'REPLACE',
+  'MERGE',
+  'GRANT',
+  'REVOKE',
+  'CALL',
+  'EXEC',
+  'EXECUTE',
+  'COPY',
+]);
+
 /**
  * Dangerous SQL patterns that require confirmation in production
  */
 const DANGEROUS_PATTERNS = [
-  /\bDROP\s+(TABLE|DATABASE|SCHEMA|INDEX|VIEW|FUNCTION|TRIGGER)/i,
-  /\bTRUNCATE\s+(TABLE\s+)?\w+/i,
-  /\bDELETE\s+FROM\s+\w+\s*(?:;|$)/i, // DELETE without WHERE
-  /\bALTER\s+TABLE\s+\w+\s+DROP/i,
-  /\bDROP\s+ALL\b/i,
+  /^\s*DROP\s+(TABLE|DATABASE|SCHEMA|INDEX|VIEW|FUNCTION|TRIGGER)\b/i,
+  /^\s*TRUNCATE\b/i,
+  /^\s*DELETE\s+FROM\b/i,
+  /^\s*UPDATE\b/i,
+  /^\s*ALTER\s+TABLE\b.*\bDROP\b/i,
+  /^\s*DROP\s+ALL\b/i,
 ];
+
+const MONGO_MUTATION_PATTERNS = [
+  /\.insert(?:one|many)?\s*\(/i,
+  /\.update(?:one|many)?\s*\(/i,
+  /\.replaceOne\s*\(/i,
+  /\.delete(?:one|many)?\s*\(/i,
+  /\.remove\s*\(/i,
+  /\.drop(?:Database)?\s*\(/i,
+  /\.bulkWrite\s*\(/i,
+  /\.findOneAnd(?:Update|Delete|Replace)\s*\(/i,
+];
+
+function normalizeSql(sql: string): string {
+  return sql
+    .replace(/--.*$/gm, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/'(?:''|[^'])*'/g, "''")
+    .replace(/\"(?:\"\"|[^\"])*\"/g, '""');
+}
+
+function splitSqlStatements(sql: string): string[] {
+  return normalizeSql(sql)
+    .split(';')
+    .map(statement => statement.trim())
+    .filter(Boolean);
+}
+
+function tokenizeSql(sql: string): string[] {
+  return normalizeSql(sql)
+    .split(/[^A-Za-z0-9_]+/)
+    .map(token => token.trim())
+    .filter(Boolean)
+    .map(token => token.toUpperCase());
+}
+
+export type QueryDialect = 'sql' | 'mongodb';
+
+export function isMutationQuery(query: string, dialect: QueryDialect = 'sql'): boolean {
+  if (!query.trim()) return false;
+
+  if (dialect === 'mongodb') {
+    return MONGO_MUTATION_PATTERNS.some(pattern => pattern.test(query));
+  }
+
+  return tokenizeSql(query).some(token => SQL_MUTATION_KEYWORDS.has(token));
+}
 
 /**
  * Checks if a SQL query contains potentially dangerous patterns
  */
 export function isDangerousQuery(sql: string): boolean {
-  const normalized = sql.trim();
-  return DANGEROUS_PATTERNS.some(pattern => pattern.test(normalized));
+  return splitSqlStatements(sql).some(statement => {
+    if (DANGEROUS_PATTERNS.some(pattern => pattern.test(statement))) {
+      if (/^\s*DELETE\s+FROM\b/i.test(statement) && /\bWHERE\b/i.test(statement)) {
+        return false;
+      }
+      if (/^\s*UPDATE\b/i.test(statement) && /\bWHERE\b/i.test(statement)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  });
 }
 
 /**
  * Get a human-readable description of why a query is dangerous
  */
 export function getDangerousQueryReason(sql: string): string | null {
-  
-  if (/\bDROP\s+(TABLE|DATABASE|SCHEMA)/i.test(sql)) {
-    return 'This query will permanently delete data structures';
+  for (const statement of splitSqlStatements(sql)) {
+    if (/^\s*DROP\s+(TABLE|DATABASE|SCHEMA|INDEX|VIEW|FUNCTION|TRIGGER)\b/i.test(statement)) {
+      return 'This query will permanently delete data structures';
+    }
+    if (/^\s*TRUNCATE\b/i.test(statement)) {
+      return 'This query will delete all rows from the table';
+    }
+    if (/^\s*DELETE\s+FROM\b/i.test(statement) && !/\bWHERE\b/i.test(statement)) {
+      return 'DELETE without WHERE clause will remove all rows';
+    }
+    if (/^\s*UPDATE\b/i.test(statement) && !/\bWHERE\b/i.test(statement)) {
+      return 'UPDATE without WHERE clause will modify all rows';
+    }
+    if (/^\s*ALTER\s+TABLE\b.*\bDROP\b/i.test(statement)) {
+      return 'This query will drop columns or constraints';
+    }
   }
-  if (/\bTRUNCATE/i.test(sql)) {
-    return 'This query will delete all rows from the table';
-  }
-  if (/\bDELETE\s+FROM\s+\w+\s*(?:;|$)/i.test(sql)) {
-    return 'DELETE without WHERE clause will remove all rows';
-  }
-  if (/\bALTER\s+TABLE\s+\w+\s+DROP/i.test(sql)) {
-    return 'This query will drop columns or constraints';
-  }
-  
+
   return null;
 }

@@ -5,7 +5,8 @@ import {
   TableSchema, 
   QueryResult,
   describeTable, 
-  previewTable 
+  previewTable,
+  Environment 
 } from '../../lib/tauri';
 import { DataGrid } from '../Grid/DataGrid';
 import { cn } from '@/lib/utils';
@@ -23,11 +24,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Value } from '../../lib/tauri';
 import { RowModal } from './RowModal'
+import { toast } from 'sonner';
 
 interface TableBrowserProps {
   sessionId: string;
   namespace: Namespace;
   tableName: string;
+  environment?: Environment;
+  readOnly?: boolean;
+  connectionName?: string;
+  connectionDatabase?: string;
   onClose: () => void;
 }
 
@@ -37,6 +43,10 @@ export function TableBrowser({
   sessionId, 
   namespace, 
   tableName, 
+  environment = 'development',
+  readOnly = false,
+  connectionName,
+  connectionDatabase,
   onClose 
 }: TableBrowserProps) {
   const { t } = useTranslation();
@@ -121,7 +131,13 @@ export function TableBrowser({
             variant="outline" 
             size="sm" 
             className="h-8 gap-1.5"
+            disabled={readOnly}
+            title={readOnly ? t('environment.blocked') : undefined}
             onClick={() => {
+              if (readOnly) {
+                toast.error(t('environment.blocked'));
+                return;
+              }
               setModalMode('insert');
               setSelectedRow(undefined);
               setIsModalOpen(true);
@@ -188,8 +204,16 @@ export function TableBrowser({
             namespace={namespace}
             tableName={tableName}
             primaryKey={schema?.primary_key}
+            environment={environment}
+            readOnly={readOnly}
+            connectionName={connectionName}
+            connectionDatabase={connectionDatabase}
             onRowsDeleted={loadData}
             onRowClick={(row) => {
+              if (readOnly) {
+                toast.error(t('environment.blocked'));
+                return;
+              }
               setModalMode('update');
               setSelectedRow(row);
               setIsModalOpen(true);
@@ -209,6 +233,7 @@ export function TableBrowser({
           namespace={namespace}
           tableName={tableName}
           schema={schema}
+          readOnly={readOnly}
           initialData={selectedRow}
           onSuccess={loadData}
         />

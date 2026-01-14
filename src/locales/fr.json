@@ -178,6 +178,7 @@
         "insert": "Insérer",
         "save": "Enregistrer",
         "cancel": "Annuler",
+        "confirm": "Confirmer",
         "unknownError": "Erreur inconnue",
         "mongoCreateDbHint": "Pour MongoDB, insérez simplement des données dans un espace de noms pour le créer.",
         "time": "Temps",
@@ -192,7 +193,7 @@
         "readOnly": "Lecture seule",
         "prodWarning": "Ceci est une base de production",
         "confirmTitle": "Confirmer l'opération en production",
-        "confirmMessage": "Tapez le nom de la base pour confirmer :",
+        "confirmMessage": "Tapez {{name}} pour confirmer :",
         "dangerousQuery": "Cette requête peut causer une perte de données",
         "blocked": "Opération bloquée : mode lecture seule"
     },

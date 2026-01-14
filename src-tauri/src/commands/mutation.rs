@@ -8,6 +8,8 @@ use uuid::Uuid;
 
 use crate::engine::{types::{Namespace, QueryResult, RowData, SessionId}};
 
+const READ_ONLY_BLOCKED: &str = "Operation blocked: read-only mode";
+
 /// Response wrapper for mutation results
 #[derive(Debug, Serialize)]
 pub struct MutationResponse {
@@ -34,6 +36,19 @@ pub async fn insert_row(
 ) -> Result<MutationResponse, String> {
     let state = state.lock().await;
     let session = parse_session_id(&session_id)?;
+
+    if state
+        .session_manager
+        .is_read_only(session)
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        return Ok(MutationResponse {
+            success: false,
+            result: None,
+            error: Some(READ_ONLY_BLOCKED.to_string()),
+        });
+    }
 
     let driver = state.session_manager.get_driver(session).await
         .map_err(|e| e.to_string())?;
@@ -75,6 +90,19 @@ pub async fn update_row(
     let state = state.lock().await;
     let session = parse_session_id(&session_id)?;
 
+    if state
+        .session_manager
+        .is_read_only(session)
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        return Ok(MutationResponse {
+            success: false,
+            result: None,
+            error: Some(READ_ONLY_BLOCKED.to_string()),
+        });
+    }
+
     let driver = state.session_manager.get_driver(session).await
         .map_err(|e| e.to_string())?;
 
@@ -113,6 +141,19 @@ pub async fn delete_row(
 ) -> Result<MutationResponse, String> {
     let state = state.lock().await;
     let session = parse_session_id(&session_id)?;
+
+    if state
+        .session_manager
+        .is_read_only(session)
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        return Ok(MutationResponse {
+            success: false,
+            result: None,
+            error: Some(READ_ONLY_BLOCKED.to_string()),
+        });
+    }
 
     let driver = state.session_manager.get_driver(session).await
         .map_err(|e| e.to_string())?;

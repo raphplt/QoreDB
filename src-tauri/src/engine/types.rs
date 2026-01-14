@@ -33,6 +33,8 @@ pub struct ConnectionConfig {
     pub password: String,
     pub database: Option<String>,
     pub ssl: bool,
+    #[serde(default)]
+    pub read_only: bool,
     pub ssh_tunnel: Option<SshTunnelConfig>,
 }
 

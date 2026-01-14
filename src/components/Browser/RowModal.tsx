@@ -34,6 +34,7 @@ interface RowModalProps {
   namespace: Namespace;
   tableName: string;
   schema: TableSchema;
+  readOnly?: boolean;
   initialData?: Record<string, Value>;
   onSuccess: () => void;
 }
@@ -46,6 +47,7 @@ export function RowModal({
   namespace,
   tableName,
   schema,
+  readOnly = false,
   initialData,
   onSuccess
 }: RowModalProps) {
@@ -120,6 +122,10 @@ export function RowModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) {
+      toast.error(t('environment.blocked'));
+      return;
+    }
     setLoading(true);
 
     try {
@@ -213,6 +219,7 @@ export function RowModal({
                         id={`${col.name}-null`} 
                         checked={nulls[col.name] || false}
                         onCheckedChange={(checked) => handleNullToggle(col.name, checked as boolean)}
+                        disabled={readOnly}
                       />
                       <label
                         htmlFor={`${col.name}-null`}
@@ -228,7 +235,7 @@ export function RowModal({
                   id={col.name}
                   value={formData[col.name] || ''}
                   onChange={(e) => handleInputChange(col.name, e.target.value)}
-                  disabled={nulls[col.name]}
+                  disabled={nulls[col.name] || readOnly}
                   placeholder={col.default_value ? `Default: ${col.default_value}` : ''}
                   className="font-mono text-sm"
                 />
@@ -240,7 +247,7 @@ export function RowModal({
             <Button type="button" variant="outline" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || readOnly} title={readOnly ? t('environment.blocked') : undefined}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {mode === 'insert' ? t('common.insert') : t('common.save')}
             </Button>

@@ -178,6 +178,7 @@
         "insert": "Insert",
         "save": "Save",
         "cancel": "Cancel",
+        "confirm": "Confirm",
         "unknownError": "Unknown error",
         "mongoCreateDbHint": "For MongoDB, simply insert data into a namespace to create it.",
         "time": "Time",
@@ -192,7 +193,7 @@
         "readOnly": "Read-only",
         "prodWarning": "This is a production database",
         "confirmTitle": "Confirm Production Operation",
-        "confirmMessage": "Type the database name to confirm:",
+        "confirmMessage": "Type {{name}} to confirm:",
         "dangerousQuery": "This query may cause data loss",
         "blocked": "Operation blocked: read-only mode"
     },

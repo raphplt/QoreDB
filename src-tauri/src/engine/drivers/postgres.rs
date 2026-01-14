@@ -864,6 +864,7 @@ mod tests {
             password: "pass".to_string(),
             database: Some("testdb".to_string()),
             ssl: false,
+            read_only: false,
             ssh_tunnel: None,
         };
 

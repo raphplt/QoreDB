@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 interface ConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnected: (sessionId: string, driver: string, environment: Environment) => void;
+  onConnected: (sessionId: string, connection: SavedConnection) => void;
   editConnection?: SavedConnection;
   editPassword?: string;
   onSaved?: () => void;
@@ -155,6 +155,7 @@ export function ConnectionModal({
         password: formData.password,
         database: formData.database || undefined,
         ssl: formData.ssl,
+        read_only: formData.readOnly,
         ssh_tunnel: formData.useSshTunnel ? {
           host: formData.sshHost,
           port: formData.sshPort,
@@ -196,6 +197,7 @@ export function ConnectionModal({
         password: formData.password,
         database: formData.database || undefined,
         ssl: formData.ssl,
+        read_only: formData.readOnly,
         ssh_tunnel: formData.useSshTunnel ? {
           host: formData.sshHost,
           port: formData.sshPort,
@@ -205,8 +207,7 @@ export function ConnectionModal({
       };
 
       const connectionId = editConnection?.id || `conn_${Date.now()}`;
-      
-      await saveConnection({
+      const savedConnection: SavedConnection = {
         id: connectionId,
         name: formData.name || `${formData.host}:${formData.port}`,
         driver: formData.driver,
@@ -215,10 +216,21 @@ export function ConnectionModal({
         host: formData.host,
         port: formData.port,
         username: formData.username,
-        password: formData.password,
         database: formData.database || undefined,
         ssl: formData.ssl,
         project_id: 'default',
+        ssh_tunnel: formData.useSshTunnel ? {
+          host: formData.sshHost,
+          port: formData.sshPort,
+          username: formData.sshUsername,
+          auth_type: 'key',
+          key_path: formData.sshKeyPath,
+        } : undefined,
+      };
+      
+      await saveConnection({
+        ...savedConnection,
+        password: formData.password,
         ssh_tunnel: formData.useSshTunnel ? {
           host: formData.sshHost,
           port: formData.sshPort,
@@ -238,7 +250,7 @@ export function ConnectionModal({
         
         if (connectResult.success && connectResult.session_id) {
           toast.success(t('connection.connectedSuccess'));
-          onConnected(connectResult.session_id, formData.driver, formData.environment);
+          onConnected(connectResult.session_id, savedConnection);
           onClose();
         } else {
           setError(connectResult.error || t('connection.connectFail'));
