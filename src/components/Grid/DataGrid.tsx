@@ -36,9 +36,10 @@ import {
   Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
 
 interface DataGridProps {
   result: QueryResult | null;
@@ -104,7 +105,8 @@ export function DataGrid({
   });
   const [copied, setCopied] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
   
   const parentRef = useRef<HTMLDivElement>(null);
   const confirmationLabel = (connectionDatabase || connectionName || 'PROD').trim() || 'PROD';
@@ -286,13 +288,8 @@ export function DataGrid({
       return;
     }
 
-    if (environment === 'production') {
-      setConfirmOpen(true);
-      return;
-    }
-
-    if (!confirm(t('grid.confirmDelete', { count: selectedRows.length }))) return;
-    void performDelete();
+    setDeleteConfirmValue('');
+    setDeleteDialogOpen(true);
   }
 
   // Copy functionality
@@ -377,6 +374,22 @@ export function DataGrid({
   const selectedCount = Object.keys(rowSelection).length;
   const canDelete = sessionId && tableName && primaryKey && primaryKey.length > 0 && selectedCount > 0;
   const deleteDisabled = readOnly || isDeleting;
+  const selectedRows = table.getSelectedRowModel().rows;
+  const previewRows = selectedRows.slice(0, 10).map((row, index) => {
+    const values = primaryKey?.map(pk => ({
+      key: pk,
+      value: row.original[pk],
+    })) || [];
+
+    const hasMissing = values.some(entry => entry.value === undefined);
+    return {
+      index: index + 1,
+      values,
+      hasMissing,
+    };
+  });
+  const deleteRequiresConfirm = environment === 'production';
+  const deleteConfirmReady = !deleteRequiresConfirm || deleteConfirmValue.trim() === confirmationLabel;
 
   return (
     <div className="flex flex-col gap-2 h-full min-h-0" data-datagrid>
@@ -601,15 +614,75 @@ export function DataGrid({
         </div>
       </div>
 
-      <ProductionConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={t('environment.confirmTitle')}
-        description={t('grid.confirmDelete', { count: selectedCount })}
-        confirmationLabel={confirmationLabel}
-        confirmLabel={t('common.confirm')}
-        onConfirm={performDelete}
-      />
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('grid.deleteTitle', { count: selectedCount })}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              {t('grid.confirmDelete', { count: selectedCount })}
+            </p>
+
+            {previewRows.length > 0 && (
+              <div className="border border-border rounded-md bg-muted/20 p-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {t('grid.preview')}
+                </div>
+                <div className="space-y-1 text-xs">
+                  {previewRows.map(row => (
+                    <div key={row.index} className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">#{row.index}</span>
+                      {row.hasMissing ? (
+                        <span className="text-error">{t('grid.previewMissingPk')}</span>
+                      ) : (
+                        <span className="font-mono text-foreground">
+                          {row.values.map(entry => `${entry.key}=${formatValue(entry.value)}`).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {selectedRows.length > previewRows.length && (
+                    <div className="text-muted-foreground">
+                      {t('grid.previewMore', { count: selectedRows.length - previewRows.length })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {deleteRequiresConfirm && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium">
+                  {t('environment.confirmMessage', { name: confirmationLabel })}
+                </label>
+                <Input
+                  value={deleteConfirmValue}
+                  onChange={(event) => setDeleteConfirmValue(event.target.value)}
+                  placeholder={confirmationLabel}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                await performDelete();
+                setDeleteDialogOpen(false);
+              }}
+              disabled={!deleteConfirmReady || isDeleting}
+            >
+              {t('common.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
