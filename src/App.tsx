@@ -7,6 +7,7 @@ import { QueryPanel } from './components/Query/QueryPanel';
 import { TableBrowser } from './components/Browser/TableBrowser';
 import { ConnectionModal } from './components/Connection/ConnectionModal';
 import { SettingsPage } from './components/Settings/SettingsPage';
+import { StatusBar } from './components/Status/StatusBar';
 import { Button } from './components/ui/button';
 import { Search, Settings } from 'lucide-react';
 import { Namespace, SavedConnection, connect, getConnectionCredentials, ConnectionConfig } from './lib/tauri';
@@ -181,9 +182,9 @@ function App() {
 
 						{!settingsOpen && <TabBar />}
 
-						<div className="flex-1 overflow-auto p-4 pt-12">
-							{settingsOpen ? (
-								<SettingsPage />
+          <div className="flex-1 overflow-auto p-4 pt-12">
+            {settingsOpen ? (
+              <SettingsPage />
 							) : sessionId ? (
 								selectedTable ? (
 									<TableBrowser
@@ -239,9 +240,10 @@ function App() {
 										</Button>
 									</div>
 								</div>
-							)}
-						</div>
-					</main>
+            )}
+          </div>
+          <StatusBar sessionId={sessionId} connection={activeConnection} />
+        </main>
 				</div>
 
 				<ConnectionModal

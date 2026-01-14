@@ -197,6 +197,12 @@
         "dangerousQuery": "Cette requête peut causer une perte de données",
         "blocked": "Opération bloquée : mode lecture seule"
     },
+    "status": {
+        "connected": "Connecté",
+        "disconnected": "Déconnecté",
+        "session": "Session",
+        "noSession": "Aucune session active"
+    },
     "logs": {
         "title": "Journaux d'erreurs",
         "filter": {

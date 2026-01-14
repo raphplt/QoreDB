@@ -197,6 +197,12 @@
         "dangerousQuery": "This query may cause data loss",
         "blocked": "Operation blocked: read-only mode"
     },
+    "status": {
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "session": "Session",
+        "noSession": "No active session"
+    },
     "logs": {
         "title": "Error Logs",
         "filter": {
