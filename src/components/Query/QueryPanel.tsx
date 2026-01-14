@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SQLEditor } from '../Editor/SQLEditor';
 import { MongoEditor, MONGO_TEMPLATES } from '../Editor/MongoEditor';
@@ -17,19 +17,27 @@ interface QueryPanelProps {
   sessionId: string | null;
   dialect?: Driver;
   environment?: Environment;
+  initialQuery?: string;
 }
 
-export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'development' }: QueryPanelProps) {
+export function QueryPanel({ sessionId, dialect = 'postgres', environment = 'development', initialQuery }: QueryPanelProps) {
   const { t } = useTranslation();
   const isMongo = dialect === 'mongodb';
   const defaultQuery = isMongo ? MONGO_TEMPLATES.find : 'SELECT 1;';
   
-  const [query, setQuery] = useState(defaultQuery);
+  const [query, setQuery] = useState(initialQuery || defaultQuery);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Update query when initialQuery prop changes
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const envConfig = ENVIRONMENT_CONFIG[environment];
 

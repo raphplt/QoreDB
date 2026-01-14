@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TabBar } from './components/Tabs/TabBar';
-import { GlobalSearch } from './components/Search/GlobalSearch';
+import { GlobalSearch, SearchResult } from './components/Search/GlobalSearch';
 import { QueryPanel } from './components/Query/QueryPanel';
 import { TableBrowser } from './components/Browser/TableBrowser';
 import { ConnectionModal } from './components/Connection/ConnectionModal';
 import { SettingsPage } from './components/Settings/SettingsPage';
 import { Button } from './components/ui/button';
 import { Search, Settings } from 'lucide-react';
-import { Namespace, SavedConnection, Environment } from './lib/tauri';
+import { Namespace, SavedConnection, Environment, connect, getConnectionCredentials, ConnectionConfig } from './lib/tauri';
+import { HistoryEntry } from './lib/history';
 import { Driver } from './lib/drivers';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { useTheme } from './hooks/useTheme';
 import './index.css';
 
@@ -35,6 +36,57 @@ function App() {
   // Edit connection state
   const [editConnection, setEditConnection] = useState<SavedConnection | null>(null);
   const [editPassword, setEditPassword] = useState<string>('');
+  
+  // Query injection from search
+  const [pendingQuery, setPendingQuery] = useState<string | undefined>(undefined);
+
+  // Handle search result selection
+  async function handleSearchSelect(result: SearchResult) {
+    setSearchOpen(false);
+    
+    if (result.type === 'connection' && result.data) {
+      // Connect to the selected connection
+      const conn = result.data as SavedConnection;
+      try {
+        const credsResult = await getConnectionCredentials('default', conn.id);
+        if (!credsResult.success || !credsResult.password) {
+          toast.error(t('sidebar.failedToGetCredentials'));
+          return;
+        }
+        
+        const config: ConnectionConfig = {
+          driver: conn.driver,
+          host: conn.host,
+          port: conn.port,
+          username: conn.username,
+          password: credsResult.password,
+          database: conn.database,
+          ssl: conn.ssl,
+        };
+        
+        const connectResult = await connect(config);
+        if (connectResult.success && connectResult.session_id) {
+          toast.success(t('sidebar.connectedTo', { name: conn.name }));
+          handleConnected(connectResult.session_id, conn.driver, conn.environment || 'development');
+          setSidebarRefreshTrigger(prev => prev + 1);
+        } else {
+          toast.error(t('sidebar.connectionToFailed', { name: conn.name }), {
+            description: connectResult.error,
+          });
+        }
+      } catch (err) {
+        toast.error(t('sidebar.connectError'));
+      }
+    } else if (result.type === 'query' || result.type === 'favorite') {
+      // Inject the query into the editor
+      const entry = result.data as HistoryEntry;
+      if (entry?.query) {
+        setPendingQuery(entry.query);
+        setSelectedTable(null);
+        setSettingsOpen(false);
+      }
+    }
+  }
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -140,7 +192,8 @@ function App() {
                   key={sessionId}
                   sessionId={sessionId} 
                   dialect={driver} 
-                  environment={environment} 
+                  environment={environment}
+                  initialQuery={pendingQuery}
                 />
               )
             ) : (
@@ -186,6 +239,7 @@ function App() {
       <GlobalSearch
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}
+        onSelect={handleSearchSelect}
       />
 
       <Toaster 

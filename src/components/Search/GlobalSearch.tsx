@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Database, Table, FileCode } from 'lucide-react';
+import { Search, Database, FileCode, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { listSavedConnections, SavedConnection } from '../../lib/tauri';
+import { searchHistory, getFavorites, HistoryEntry } from '../../lib/history';
 
 interface GlobalSearchProps {
   isOpen: boolean;
@@ -9,26 +11,36 @@ interface GlobalSearchProps {
   onSelect?: (result: SearchResult) => void;
 }
 
-interface SearchResult {
-  type: 'connection' | 'table' | 'query';
+export interface SearchResult {
+  type: 'connection' | 'query' | 'favorite';
   id: string;
   label: string;
   sublabel?: string;
+  data?: SavedConnection | HistoryEntry;
 }
+
+const DEFAULT_PROJECT = 'default';
 
 export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [connections, setConnections] = useState<SavedConnection[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Load connections when search opens
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
       setQuery('');
       setResults([]);
       setSelectedIndex(0);
+      
+      // Fetch connections from vault
+      listSavedConnections(DEFAULT_PROJECT)
+        .then(setConnections)
+        .catch(console.error);
     }
   }, [isOpen]);
 
@@ -54,21 +66,67 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex, onClose, onSelect]);
 
-  // TODO: Implement actual search
-  function handleSearch(value: string) {
+  const handleSearch = useCallback((value: string) => {
     setQuery(value);
     setSelectedIndex(0);
     
-    // Placeholder results
-    if (value.trim()) {
-      setResults([
-        { type: 'connection', id: '1', label: 'Production DB', sublabel: 'postgres' },
-        { type: 'table', id: '2', label: 'users', sublabel: 'public.users' },
-      ]);
-    } else {
+    if (!value.trim()) {
       setResults([]);
+      return;
     }
-  }
+
+    const lowerQuery = value.toLowerCase();
+    const searchResults: SearchResult[] = [];
+
+    // Search saved connections
+    connections.forEach(conn => {
+      const matches = 
+        conn.name.toLowerCase().includes(lowerQuery) ||
+        conn.host.toLowerCase().includes(lowerQuery) ||
+        (conn.database?.toLowerCase().includes(lowerQuery) ?? false);
+      
+      if (matches) {
+        searchResults.push({
+          type: 'connection',
+          id: conn.id,
+          label: conn.name,
+          sublabel: `${conn.driver} · ${conn.host}`,
+          data: conn,
+        });
+      }
+    });
+
+    // Search favorites (higher priority than history)
+    const favorites = getFavorites();
+    favorites.forEach(fav => {
+      if (fav.query.toLowerCase().includes(lowerQuery)) {
+        searchResults.push({
+          type: 'favorite',
+          id: `fav-${fav.id}`,
+          label: fav.query.substring(0, 60) + (fav.query.length > 60 ? '...' : ''),
+          sublabel: fav.database ?? fav.driver,
+          data: fav,
+        });
+      }
+    });
+
+    // Search history
+    const historyResults = searchHistory(lowerQuery);
+    historyResults.slice(0, 5).forEach(entry => {
+      // Skip if already in favorites
+      if (favorites.some(f => f.id === entry.id)) return;
+      
+      searchResults.push({
+        type: 'query',
+        id: `hist-${entry.id}`,
+        label: entry.query.substring(0, 60) + (entry.query.length > 60 ? '...' : ''),
+        sublabel: entry.database ?? entry.driver,
+        data: entry,
+      });
+    });
+
+    setResults(searchResults.slice(0, 10)); // Limit to 10 results
+  }, [connections]);
 
   if (!isOpen) return null;
 
@@ -115,7 +173,7 @@ export function GlobalSearch({ isOpen, onClose, onSelect }: GlobalSearchProps) {
                   i === selectedIndex && "text-accent-foreground/70"
                 )}>
                   {result.type === 'connection' ? <Database size={16} /> : 
-                   result.type === 'table' ? <Table size={16} /> : <FileCode size={16} />}
+                   result.type === 'favorite' ? <Star size={16} /> : <FileCode size={16} />}
                 </span>
                 
                 <div className="flex flex-col flex-1 overflow-hidden">

@@ -23,7 +23,6 @@ export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
   
   const driverMeta = getDriverMetadata(driver);
 
-  // TODO: Get sessionId from connection
   const sessionId = connectionId;
 
   useEffect(() => {
@@ -56,11 +55,8 @@ export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
     setExpandedNs(key);
     
     try {
-      console.log('[DBTree] Calling listCollections with:', { sessionId, namespace: ns });
       const result = await listCollections(sessionId, ns);
-      console.log('[DBTree] listCollections result:', result);
       if (result.success && result.collections) {
-        console.log('[DBTree] Setting collections:', result.collections.length, 'items');
         setCollections(result.collections);
       } else {
         console.error('[DBTree] listCollections failed:', result.error);
@@ -81,7 +77,7 @@ export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground animate-pulse">
-        <Loader2 size={14} className="animate-spin" /> Loading...
+        <Loader2 size={14} className="animate-spin" /> {t('common.loading')}
       </div>
     );
   }
