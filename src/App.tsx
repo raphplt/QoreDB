@@ -145,10 +145,18 @@ function App() {
     setConnectionModalOpen(true);
   }
 
-  function handleConnectionSaved() {
-    handleCloseConnectionModal();
-    setSidebarRefreshTrigger(prev => prev + 1);
-  }
+  function handleConnectionSaved(updatedConnection: SavedConnection) {
+			const isEditingActive = activeConnection?.id === updatedConnection.id;
+			if (isEditingActive) {
+				setActiveConnection((prev) =>
+					prev ? { ...prev, ...updatedConnection } : updatedConnection
+				);
+				setDriver(updatedConnection.driver as Driver);
+			}
+
+			handleCloseConnectionModal();
+			setSidebarRefreshTrigger((prev) => prev + 1);
+		}
 
   function handleCloseConnectionModal() {
     setConnectionModalOpen(false);
