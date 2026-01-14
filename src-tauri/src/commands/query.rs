@@ -37,7 +37,9 @@ fn is_sql_mutation(query: &str) -> bool {
 
 fn is_mongo_mutation(query: &str) -> bool {
     let normalized = query.to_ascii_lowercase();
-    [
+    let compact: String = normalized.split_whitespace().collect();
+
+    let raw_patterns = [
         ".insert(",
         ".insertone(",
         ".insertmany(",
@@ -49,15 +51,26 @@ fn is_mongo_mutation(query: &str) -> bool {
         ".deleteone(",
         ".deletemany(",
         ".remove(",
+        ".createcollection(",
         ".drop(",
         ".dropdatabase(",
         ".bulkwrite(",
         ".findoneandupdate(",
         ".findoneanddelete(",
         ".findoneandreplace(",
-    ]
-    .iter()
-    .any(|pattern| normalized.contains(pattern))
+    ];
+
+    if raw_patterns.iter().any(|pattern| normalized.contains(pattern)) {
+        return true;
+    }
+
+    let json_patterns = [
+        "\"operation\":\"create_collection\"",
+        "\"operation\":\"drop_collection\"",
+        "\"operation\":\"drop_database\"",
+    ];
+
+    json_patterns.iter().any(|pattern| compact.contains(pattern))
 }
 
 fn is_mutation_query(driver_id: &str, query: &str) -> bool {

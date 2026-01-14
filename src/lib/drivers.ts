@@ -68,7 +68,7 @@ export const DRIVERS: Record<Driver, DriverMetadata> = {
     collectionLabel: 'dbtree.collection',
     collectionPluralLabel: 'dbtree.collections',
     treeRootLabel: 'dbtree.databasesHeader',
-    createAction: 'none',
+    createAction: 'database',
     databaseFieldLabel: 'connection.database',
     supportsSchemas: false,
     supportsSQL: false,

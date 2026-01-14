@@ -8,17 +8,22 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-import { executeQuery } from '../../lib/tauri';
+import { executeQuery, Environment } from '../../lib/tauri';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getDriverMetadata } from '../../lib/drivers';
+import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
 
 interface CreateDatabaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId: string;
   driver: string;
+  environment?: Environment;
+  readOnly?: boolean;
+  connectionName?: string;
+  connectionDatabase?: string;
   onCreated: () => void;
 }
 
@@ -27,68 +32,105 @@ export function CreateDatabaseModal({
   onClose, 
   sessionId, 
   driver,
+  environment = 'development',
+  readOnly = false,
+  connectionName,
+  connectionDatabase,
   onCreated 
 }: CreateDatabaseModalProps) {
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [collectionName, setCollectionName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | (() => Promise<void>)>(null);
   
   const driverMeta = getDriverMetadata(driver);
+  const isMongo = !driverMeta.supportsSQL;
+  const confirmationLabel = (connectionDatabase || connectionName || 'PROD').trim() || 'PROD';
 
   useEffect(() => {
-    if (isOpen && driverMeta.createAction === 'none') {
-      toast.info(t('common.mongoCreateDbHint'));
-      onClose();
-    }
-  }, [isOpen, driverMeta.createAction, onClose, t]);
+    if (!isOpen) return;
+    setName('');
+    setCollectionName('');
+  }, [isOpen]);
 
-  async function handleCreate() {
-    if (!name.trim()) return;
-
+  async function performCreate() {
     setLoading(true);
     try {
       let query = '';
-      
+
       if (driverMeta.createAction === 'schema') {
         query = `CREATE SCHEMA "${name}"`;
-      } else if (driverMeta.createAction === 'database') {
+      } else if (driverMeta.createAction === 'database' && !isMongo) {
         query = `CREATE DATABASE \`${name}\``;
+      } else if (isMongo) {
+        const payload = {
+          database: name.trim(),
+          collection: collectionName.trim(),
+          operation: 'create_collection',
+        };
+        query = JSON.stringify(payload);
       } else {
         toast.error(t('database.creationNotSupported'));
         return;
       }
 
       const result = await executeQuery(sessionId, query);
-      
+
       if (result.success) {
-        const successKey = driverMeta.createAction === 'schema' 
-          ? 'database.schemaCreateSuccess' 
-          : 'database.databaseCreateSuccess';
+        const successKey = isMongo
+          ? 'database.mongoCreateSuccess'
+          : driverMeta.createAction === 'schema'
+            ? 'database.schemaCreateSuccess'
+            : 'database.databaseCreateSuccess';
         toast.success(t(successKey));
         onCreated();
         onClose();
         setName('');
+        setCollectionName('');
       } else {
-        const errorKey = driverMeta.createAction === 'schema'
-          ? 'database.schemaCreateError'
-          : 'database.databaseCreateError';
+        const errorKey = isMongo
+          ? 'database.mongoCreateError'
+          : driverMeta.createAction === 'schema'
+            ? 'database.schemaCreateError'
+            : 'database.databaseCreateError';
         toast.error(t(errorKey), {
-          description: result.error
+          description: result.error,
         });
       }
     } catch (err) {
       toast.error(t('common.error'), {
-        description: err instanceof Error ? err.message : t('common.unknownError')
+        description: err instanceof Error ? err.message : t('common.unknownError'),
       });
     } finally {
       setLoading(false);
     }
   }
 
+  function handleCreate() {
+    if (!name.trim()) return;
+    if (isMongo && !collectionName.trim()) return;
+
+    if (readOnly) {
+      toast.error(t('environment.blocked'));
+      return;
+    }
+
+    if (environment === 'production') {
+      setPendingAction(() => performCreate);
+      setConfirmOpen(true);
+      return;
+    }
+
+    void performCreate();
+  }
+
   function handleOpenChange(open: boolean) {
     if (!open) {
       onClose();
       setName('');
+      setCollectionName('');
     }
   }
 
@@ -105,37 +147,83 @@ export function CreateDatabaseModal({
     : 'database.databaseNameLabel';
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>
-            {t(titleKey)}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {t(titleKey)}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-2 py-4">
-          <label className="text-sm font-medium">{t(nameLabelKey)}</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={driverMeta.createAction === 'schema' ? t('database.schemaNamePlaceholder') : t('database.databaseNamePlaceholder')}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreate();
-            }}
-          />
-        </div>
+          <div className="space-y-3 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t(nameLabelKey)}</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={driverMeta.createAction === 'schema' ? t('database.schemaNamePlaceholder') : t('database.databaseNamePlaceholder')}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreate();
+                }}
+                disabled={loading}
+              />
+            </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={handleCreate} disabled={loading || !name.trim()}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('common.create')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {isMongo && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('database.collectionNameLabel')}</label>
+                  <Input
+                    value={collectionName}
+                    onChange={(e) => setCollectionName(e.target.value)}
+                    placeholder={t('database.collectionNamePlaceholder')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreate();
+                    }}
+                    disabled={loading}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('common.mongoCreateDbHint')}
+                </p>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleCreate} disabled={loading || !name.trim() || (isMongo && !collectionName.trim())}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('common.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ProductionConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setPendingAction(null);
+          }
+        }}
+        title={t('environment.confirmTitle')}
+        description={t('database.confirmCreate')}
+        confirmationLabel={confirmationLabel}
+        confirmLabel={t('common.confirm')}
+        onConfirm={() => {
+          const action = pendingAction;
+          setPendingAction(null);
+          if (action) {
+            void action();
+          }
+        }}
+      />
+    </>
   );
 }

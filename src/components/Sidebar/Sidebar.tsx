@@ -143,6 +143,7 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTa
                     <DBTree 
                       connectionId={connectedSessionId} 
                       driver={conn.driver}
+                      connection={conn}
                       onTableSelect={onTableSelect}
                     />
                   </div>

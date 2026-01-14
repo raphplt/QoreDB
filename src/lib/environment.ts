@@ -68,9 +68,11 @@ const MONGO_MUTATION_PATTERNS = [
   /\.replaceOne\s*\(/i,
   /\.delete(?:one|many)?\s*\(/i,
   /\.remove\s*\(/i,
+  /\.createCollection\s*\(/i,
   /\.drop(?:Database)?\s*\(/i,
   /\.bulkWrite\s*\(/i,
   /\.findOneAnd(?:Update|Delete|Replace)\s*\(/i,
+  /"operation"\s*:\s*"(create_collection|drop_collection|drop_database)"/i,
 ];
 
 function normalizeSql(sql: string): string {

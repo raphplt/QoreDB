@@ -1,12 +1,12 @@
 [package]
-name = "qoreqb"
+name = "qoredb"
 version = "0.1.0"
 description = "Next gen DB Client"
 authors = ["Raphaël Plassart <raphael.plassart@protonmail.com>"]
 edition = "2021"
 
 [lib]
-name = "qoreqb_lib"
+name = "qoredb_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Namespace, Collection, listNamespaces, listCollections } from '../../lib/tauri';
+import { Namespace, Collection, listNamespaces, listCollections, SavedConnection } from '../../lib/tauri';
 import { Folder, FolderOpen, Table, Eye, Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,11 @@ import { getDriverMetadata } from '../../lib/drivers';
 interface DBTreeProps {
   connectionId: string;
   driver: string;
+  connection?: SavedConnection;
   onTableSelect?: (namespace: Namespace, tableName: string) => void;
 }
 
-export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
+export function DBTree({ connectionId, driver, connection, onTableSelect }: DBTreeProps) {
   const { t } = useTranslation();
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [expandedNs, setExpandedNs] = useState<string | null>(null);
@@ -94,7 +95,8 @@ export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
               size="icon" 
               className="h-5 w-5" 
               onClick={() => setCreateModalOpen(true)}
-              title={t(driverMeta.createAction === 'schema' ? 'database.newSchema' : 'database.newDatabase')}
+              disabled={connection?.read_only}
+              title={connection?.read_only ? t('environment.blocked') : t(driverMeta.createAction === 'schema' ? 'database.newSchema' : 'database.newDatabase')}
            >
               <Plus size={12} />
            </Button>
@@ -106,6 +108,10 @@ export function DBTree({ connectionId, driver, onTableSelect }: DBTreeProps) {
         onClose={() => setCreateModalOpen(false)}
         sessionId={sessionId}
         driver={driver}
+        environment={connection?.environment || 'development'}
+        readOnly={connection?.read_only || false}
+        connectionName={connection?.name}
+        connectionDatabase={connection?.database}
         onCreated={loadNamespaces}
       />
       {namespaces.map(ns => {

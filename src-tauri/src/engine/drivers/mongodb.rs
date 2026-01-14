@@ -264,6 +264,38 @@ impl DataEngine for MongoDriver {
 
         let start = Instant::now();
 
+        let trimmed = query.trim();
+
+        if trimmed.starts_with('{') {
+            let parsed: serde_json::Value = serde_json::from_str(trimmed)
+                .map_err(|e| EngineError::syntax_error(format!("Invalid JSON: {}", e)))?;
+
+            if let Some(operation) = parsed.get("operation").and_then(|v| v.as_str()) {
+                if operation == "create_collection" {
+                    let database = parsed["database"]
+                        .as_str()
+                        .ok_or_else(|| EngineError::syntax_error("Missing 'database' field"))?;
+                    let collection = parsed["collection"]
+                        .as_str()
+                        .ok_or_else(|| EngineError::syntax_error("Missing 'collection' field"))?;
+
+                    client
+                        .database(database)
+                        .run_command(doc! { "create": collection })
+                        .await
+                        .map_err(|e| EngineError::execution_error(e.to_string()))?;
+
+                    let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+                    return Ok(QueryResult {
+                        columns: Vec::new(),
+                        rows: Vec::new(),
+                        affected_rows: None,
+                        execution_time_ms,
+                    });
+                }
+            }
+        }
+
         let (database, collection_name, filter) = Self::parse_query(query)?;
 
         let collection = client.database(&database).collection::<Document>(&collection_name);
