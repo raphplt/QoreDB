@@ -15,11 +15,12 @@ interface SidebarProps {
   onConnected: (sessionId: string, connection: SavedConnection) => void;
   connectedSessionId: string | null;
   onTableSelect?: (namespace: Namespace, tableName: string) => void;
+  onDatabaseSelect?: (namespace: Namespace) => void;
   onEditConnection: (connection: SavedConnection, password: string) => void;
   refreshTrigger?: number;
 }
 
-export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTableSelect, onEditConnection, refreshTrigger }: SidebarProps) {
+export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTableSelect, onDatabaseSelect, onEditConnection, refreshTrigger }: SidebarProps) {
   const [connections, setConnections] = useState<SavedConnection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -145,6 +146,7 @@ export function Sidebar({ onNewConnection, onConnected, connectedSessionId, onTa
                       driver={conn.driver}
                       connection={conn}
                       onTableSelect={onTableSelect}
+                      onDatabaseSelect={onDatabaseSelect}
                     />
                   </div>
                 )}

@@ -97,7 +97,45 @@
         "type": "Type",
         "nullable": "Nullable",
         "default": "Défaut",
-        "primaryKey": "Clé primaire"
+        "primaryKey": "Clé primaire",
+        "info": "Infos"
+    },
+    "tableMenu": {
+        "open": "Ouvrir",
+        "truncate": "Vider la table",
+        "drop": "Supprimer la table",
+        "truncateTitle": "Vider la table",
+        "truncateDescription": "Toutes les données de \"{{name}}\" seront supprimées définitivement. Cette action est irréversible.",
+        "truncateConfirm": "Vider",
+        "truncateSuccess": "Table \"{{name}}\" vidée avec succès",
+        "truncateError": "Échec du vidage de la table",
+        "dropTitle": "Supprimer la table",
+        "dropDescription": "La table \"{{name}}\" et toutes ses données seront supprimées définitivement. Cette action est irréversible.",
+        "dropConfirm": "Supprimer",
+        "dropSuccess": "Table \"{{name}}\" supprimée avec succès",
+        "dropError": "Échec de la suppression de la table",
+        "typeToConfirm": "Tapez \"{{name}}\" pour confirmer :",
+        "rowsWillBeDeleted": "~{{count}} lignes seront supprimées"
+    },
+    "tableInfo": {
+        "size": "Taille",
+        "rowCount": "Lignes",
+        "columnCount": "Colonnes",
+        "indexCount": "Index",
+        "indexes": "Index",
+        "maintenance": "Maintenance",
+        "lastVacuum": "Dernier Vacuum",
+        "lastAnalyze": "Dernière Analyse"
+    },
+    "databaseBrowser": {
+        "overview": "Vue d'ensemble",
+        "tables": "Tables",
+        "export": "Export",
+        "size": "Taille",
+        "tableCount": "Tables",
+        "indexCount": "Index",
+        "noTables": "Aucune table dans cette base",
+        "viewAll": "Voir les {{count}} tables"
     },
     "query": {
         "run": "Exécuter",

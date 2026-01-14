@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Namespace, Collection, listNamespaces, listCollections, SavedConnection } from '../../lib/tauri';
-import { Folder, FolderOpen, Table, Eye, Loader2, Plus } from 'lucide-react';
+import { Folder, FolderOpen, Table, Eye, Loader2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CreateDatabaseModal } from './CreateDatabaseModal';
+import { TableContextMenu } from './TableContextMenu';
 import { useTranslation } from 'react-i18next';
 import { getDriverMetadata } from '../../lib/drivers';
 
@@ -12,9 +13,10 @@ interface DBTreeProps {
   driver: string;
   connection?: SavedConnection;
   onTableSelect?: (namespace: Namespace, tableName: string) => void;
+  onDatabaseSelect?: (namespace: Namespace) => void;
 }
 
-export function DBTree({ connectionId, driver, connection, onTableSelect }: DBTreeProps) {
+export function DBTree({ connectionId, driver, connection, onTableSelect, onDatabaseSelect }: DBTreeProps) {
   const { t } = useTranslation();
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [expandedNs, setExpandedNs] = useState<string | null>(null);
@@ -125,12 +127,19 @@ export function DBTree({ connectionId, driver, connection, onTableSelect }: DBTr
                 "flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-accent/10 transition-colors text-left",
                 isExpanded ? "text-foreground" : "text-muted-foreground"
               )}
-              onClick={() => handleExpandNamespace(ns)}
+              onClick={() => {
+                // Expand tables + open Database Overview
+                handleExpandNamespace(ns);
+                onDatabaseSelect?.(ns);
+              }}
             >
+              <span className="shrink-0">
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
               <span className="shrink-0">
                 {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
               </span>
-              <span className="truncate flex-1">
+              <span className="truncate">
                 {ns.schema ? `${ns.database}.${ns.schema}` : ns.database}
               </span>
             </button>
@@ -141,16 +150,26 @@ export function DBTree({ connectionId, driver, connection, onTableSelect }: DBTr
                   <div className="px-2 py-1 text-xs text-muted-foreground italic">{t('dbtree.noCollections')}</div>
                 ) : (
                   collections.map(col => (
-                    <button
+                    <TableContextMenu
                       key={col.name}
-                      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-left"
-                      onClick={() => handleTableClick(col)}
+                      collection={col}
+                      sessionId={sessionId}
+                      driver={driver}
+                      environment={connection?.environment || 'development'}
+                      readOnly={connection?.read_only || false}
+                      onRefresh={loadNamespaces}
+                      onOpen={() => handleTableClick(col)}
                     >
-                      <span className="shrink-0">
-                        {col.collection_type === 'View' ? <Eye size={13} /> : <Table size={13} />}
-                      </span>
-                      <span className="truncate font-mono text-xs">{col.name}</span>
-                    </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-left"
+                        onClick={() => handleTableClick(col)}
+                      >
+                        <span className="shrink-0">
+                          {col.collection_type === 'View' ? <Eye size={13} /> : <Table size={13} />}
+                        </span>
+                        <span className="truncate font-mono text-xs">{col.name}</span>
+                      </button>
+                    </TableContextMenu>
                   ))
                 )}
               </div>

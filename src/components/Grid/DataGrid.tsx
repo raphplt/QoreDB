@@ -359,6 +359,7 @@ export function DataGrid({
         }
       }
     }
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [copyToClipboard, table]);

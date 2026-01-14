@@ -5,6 +5,7 @@ import { TabBar } from './components/Tabs/TabBar';
 import { GlobalSearch, SearchResult } from './components/Search/GlobalSearch';
 import { QueryPanel } from './components/Query/QueryPanel';
 import { TableBrowser } from './components/Browser/TableBrowser';
+import { DatabaseBrowser } from './components/Browser/DatabaseBrowser';
 import { ConnectionModal } from './components/Connection/ConnectionModal';
 import { SettingsPage } from './components/Settings/SettingsPage';
 import { StatusBar } from './components/Status/StatusBar';
@@ -31,6 +32,7 @@ function App() {
   const [driver, setDriver] = useState<Driver>('postgres');
   const [activeConnection, setActiveConnection] = useState<SavedConnection | null>(null);
   const [selectedTable, setSelectedTable] = useState<SelectedTable | null>(null);
+  const [selectedDatabase, setSelectedDatabase] = useState<Namespace | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   
@@ -132,11 +134,22 @@ function App() {
 
   function handleTableSelect(namespace: Namespace, tableName: string) {
     setSelectedTable({ namespace, tableName });
+    setSelectedDatabase(null);
+    setSettingsOpen(false);
+  }
+
+  function handleDatabaseSelect(namespace: Namespace) {
+    setSelectedDatabase(namespace);
+    setSelectedTable(null);
     setSettingsOpen(false);
   }
 
   function handleCloseTableBrowser() {
     setSelectedTable(null);
+  }
+
+  function handleCloseDatabaseBrowser() {
+    setSelectedDatabase(null);
   }
 
   function handleEditConnection(connection: SavedConnection, password: string) {
@@ -172,6 +185,7 @@ function App() {
 						onConnected={handleConnected}
 						connectedSessionId={sessionId}
 						onTableSelect={handleTableSelect}
+						onDatabaseSelect={handleDatabaseSelect}
 						onEditConnection={handleEditConnection}
 						refreshTrigger={sidebarRefreshTrigger}
 					/>
@@ -199,11 +213,23 @@ function App() {
 										sessionId={sessionId}
 										namespace={selectedTable.namespace}
 										tableName={selectedTable.tableName}
+										driver={driver}
 										environment={activeConnection?.environment || "development"}
 										readOnly={activeConnection?.read_only || false}
 										connectionName={activeConnection?.name}
 										connectionDatabase={activeConnection?.database}
 										onClose={handleCloseTableBrowser}
+									/>
+								) : selectedDatabase ? (
+									<DatabaseBrowser
+										sessionId={sessionId}
+										namespace={selectedDatabase}
+										driver={driver}
+										environment={activeConnection?.environment || "development"}
+										readOnly={activeConnection?.read_only || false}
+										connectionName={activeConnection?.name}
+										onTableSelect={handleTableSelect}
+										onClose={handleCloseDatabaseBrowser}
 									/>
 								) : (
 									<QueryPanel

@@ -97,7 +97,45 @@
         "type": "Type",
         "nullable": "Nullable",
         "default": "Default",
-        "primaryKey": "Primary Key"
+        "primaryKey": "Primary Key",
+        "info": "Info"
+    },
+    "tableMenu": {
+        "open": "Open",
+        "truncate": "Truncate Table",
+        "drop": "Drop Table",
+        "truncateTitle": "Truncate Table",
+        "truncateDescription": "All data in \"{{name}}\" will be permanently deleted. This action cannot be undone.",
+        "truncateConfirm": "Truncate",
+        "truncateSuccess": "Table \"{{name}}\" truncated successfully",
+        "truncateError": "Failed to truncate table",
+        "dropTitle": "Drop Table",
+        "dropDescription": "The table \"{{name}}\" and all its data will be permanently deleted. This action cannot be undone.",
+        "dropConfirm": "Drop Table",
+        "dropSuccess": "Table \"{{name}}\" dropped successfully",
+        "dropError": "Failed to drop table",
+        "typeToConfirm": "Type \"{{name}}\" to confirm:",
+        "rowsWillBeDeleted": "~{{count}} rows will be deleted"
+    },
+    "tableInfo": {
+        "size": "Size",
+        "rowCount": "Rows",
+        "columnCount": "Columns",
+        "indexCount": "Indexes",
+        "indexes": "Indexes",
+        "maintenance": "Maintenance",
+        "lastVacuum": "Last Vacuum",
+        "lastAnalyze": "Last Analyze"
+    },
+    "databaseBrowser": {
+        "overview": "Overview",
+        "tables": "Tables",
+        "export": "Export",
+        "size": "Size",
+        "tableCount": "Tables",
+        "indexCount": "Indexes",
+        "noTables": "No tables in this database",
+        "viewAll": "View all {{count}} tables"
     },
     "query": {
         "run": "Run",
