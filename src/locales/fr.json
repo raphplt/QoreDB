@@ -191,7 +191,15 @@
         "delete": "Supprimer",
         "deleting": "Suppression...",
         "deleteSuccess": "{{count}} ligne(s) supprimée(s) avec succès",
-        "deleteError": "Échec de la suppression des lignes"
+        "deleteError": "Échec de la suppression des lignes",
+        "download": "Télécharger",
+        "downloadCSV": "Télécharger en fichier CSV",
+        "downloadJSON": "Télécharger en fichier JSON",
+        "noDataToExport": "Aucune donnée à exporter",
+        "exportSuccess": "{{count}} ligne(s) exportée(s) vers {{path}}",
+        "exportError": "Échec de l'export des données",
+        "copyToClipboard": "Copier dans le presse-papiers",
+        "downloadToFile": "Télécharger en fichier"
     },
     "rowModal": {
         "insertTitle": "Insérer une nouvelle ligne",

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Namespace, Collection, listNamespaces, listCollections, SavedConnection } from '../../lib/tauri';
+import { useState, useEffect, useCallback } from 'react';
+import { Namespace, Collection, SavedConnection } from '../../lib/tauri';
+import { useSchemaCache } from '../../hooks/useSchemaCache';
 import { Folder, FolderOpen, Table, Eye, Loader2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,7 @@ export function DBTree({
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [expandedNs, setExpandedNs] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(false);
+  const schemaCache = useSchemaCache(connectionId);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createTableOpen, setCreateTableOpen] = useState(false);
   const [createTableNamespace, setCreateTableNamespace] = useState<Namespace | null>(null);
@@ -49,19 +50,14 @@ export function DBTree({
     refreshExpandedNamespace();
   }, [refreshTrigger]);
 
-  async function loadNamespaces() {
+  const loadNamespaces = useCallback(async () => {
     try {
-      setLoading(true);
-      const result = await listNamespaces(sessionId);
-      if (result.success && result.namespaces) {
-        setNamespaces(result.namespaces);
-      }
+      const ns = await schemaCache.getNamespaces();
+      setNamespaces(ns);
     } catch (err) {
       console.error('Failed to load namespaces:', err);
-    } finally {
-      setLoading(false);
     }
-  }
+  }, [schemaCache]);
 
   async function handleExpandNamespace(ns: Namespace) {
     const key = `${ns.database}:${ns.schema || ''}`;
@@ -76,18 +72,14 @@ export function DBTree({
     await refreshCollections(ns);
   }
 
-  async function refreshCollections(ns: Namespace) {
+  const refreshCollections = useCallback(async (ns: Namespace) => {
     try {
-      const result = await listCollections(sessionId, ns);
-      if (result.success && result.collections) {
-        setCollections(result.collections);
-      } else {
-        console.error('[DBTree] listCollections failed:', result.error);
-      }
+      const cols = await schemaCache.getCollections(ns);
+      setCollections(cols);
     } catch (err) {
       console.error('Failed to refresh collections:', err);
     }
-  }
+  }, [schemaCache]);
 
   async function refreshExpandedNamespace() {
     if (!expandedNs) return;
@@ -112,7 +104,7 @@ export function DBTree({
     return `${ns.database}:${ns.schema || ''}`;
   }
 
-  if (loading) {
+  if (schemaCache.loading && namespaces.length === 0) {
     return (
       <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground animate-pulse">
         <Loader2 size={14} className="animate-spin" /> {t('common.loading')}
@@ -149,7 +141,11 @@ export function DBTree({
         readOnly={connection?.read_only || false}
         connectionName={connection?.name}
         connectionDatabase={connection?.database}
-        onCreated={loadNamespaces}
+        onCreated={() => {
+          // Invalidate cache before refresh
+          schemaCache.invalidateNamespaces();
+          loadNamespaces();
+        }}
       />
       {namespaces.map(ns => {
         const key = getNsKey(ns);
@@ -235,6 +231,8 @@ export function DBTree({
           driver={driver as Driver}
           onTableCreated={(tableName) => {
             if (!createTableNamespace) return;
+            // Invalidate cache before refresh
+            schemaCache.invalidateCollections(createTableNamespace);
             refreshCollections(createTableNamespace);
             if (tableName) {
               emitTableChange({ type: 'create', namespace: createTableNamespace, tableName });

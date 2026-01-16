@@ -33,13 +33,26 @@ import {
   ChevronLast,
   ChevronLeft,
   ChevronRight,
-  Trash2
+  Trash2,
+  Download,
+  Copy,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 interface DataGridProps {
   result: QueryResult | null;
@@ -345,6 +358,64 @@ export function DataGrid({
     setTimeout(() => setCopied(null), 2000);
   }, [rows, table, result, tableName]);
 
+  // Export to file functionality
+  const exportToFile = useCallback(async (format: 'csv' | 'json') => {
+    const selectedRows = table.getSelectedRowModel().rows;
+    const rowsToExport = selectedRows.length > 0 ? selectedRows : rows;
+    
+    if (rowsToExport.length === 0) {
+      toast.error(t('grid.noDataToExport'));
+      return;
+    }
+
+    const columnNames = result?.columns.map(c => c.name) || [];
+    let content = '';
+    let extension = '';
+    let defaultName = tableName || 'export';
+
+    if (format === 'csv') {
+      extension = 'csv';
+      // Use comma separator for actual CSV files
+      const header = columnNames.join(',');
+      const dataRows = rowsToExport.map(row => 
+        columnNames.map(col => {
+          const value = row.original[col];
+          const formatted = formatValue(value);
+          // Escape quotes and wrap in quotes if contains comma, quote, or newline
+          if (formatted.includes(',') || formatted.includes('"') || formatted.includes('\n')) {
+            return `"${formatted.replace(/"/g, '""')}"`;
+          }
+          return formatted;
+        }).join(',')
+      );
+      content = [header, ...dataRows].join('\n');
+    } else {
+      extension = 'json';
+      const jsonData = rowsToExport.map(row => row.original);
+      content = JSON.stringify(jsonData, null, 2);
+    }
+
+    try {
+      const filePath = await save({
+        defaultPath: `${defaultName}.${extension}`,
+        filters: [{
+          name: format.toUpperCase(),
+          extensions: [extension]
+        }]
+      });
+
+      if (filePath) {
+        await writeTextFile(filePath, content);
+        toast.success(t('grid.exportSuccess', { count: rowsToExport.length, path: filePath.split(/[\\/]/).pop() }));
+      }
+    } catch (err) {
+      console.error('Export failed:', err);
+      toast.error(t('grid.exportError'), {
+        description: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }, [rows, table, result, tableName, t]);
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -438,36 +509,40 @@ export function DataGrid({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => copyToClipboard('csv')}
-            title={t('grid.copyCSV')}
-          >
-            {copied === 'csv' ? <Check size={14} className="text-green-500" /> : <FileSpreadsheet size={14} />}
-            <span className="ml-1">CSV</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => copyToClipboard('json')}
-            title={t('grid.copyJSON')}
-          >
-            {copied === 'json' ? <Check size={14} className="text-green-500" /> : <FileJson size={14} />}
-            <span className="ml-1">JSON</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => copyToClipboard('sql')}
-            title={t('grid.copySQL')}
-          >
-            {copied === 'sql' ? <Check size={14} className="text-green-500" /> : <Code2 size={14} />}
-            <span className="ml-1">SQL</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                <span className="ml-1">Export</span>
+                <ChevronDown size={12} className="ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel className="text-xs">{t('grid.copyToClipboard')}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => copyToClipboard('csv')} className="text-xs">
+                <FileSpreadsheet size={14} className="mr-2" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => copyToClipboard('json')} className="text-xs">
+                <FileJson size={14} className="mr-2" />
+                JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => copyToClipboard('sql')} className="text-xs">
+                <Code2 size={14} className="mr-2" />
+                SQL
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs">{t('grid.downloadToFile')}</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => exportToFile('csv')} className="text-xs">
+                <Download size={14} className="mr-2" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToFile('json')} className="text-xs">
+                <Download size={14} className="mr-2" />
+                JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

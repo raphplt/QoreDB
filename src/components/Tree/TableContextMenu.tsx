@@ -15,6 +15,7 @@ import { Collection, Environment, executeQuery } from '../../lib/tauri';
 import { Driver, getDriverMetadata } from '../../lib/drivers';
 import { buildDropTableSQL, buildTruncateTableSQL } from '@/lib/column-types';
 import { emitTableChange } from '@/lib/tableEvents';
+import { invalidateCollectionsCache, invalidateTableSchemaCache } from '../../hooks/useSchemaCache';
 
 interface TableContextMenuProps {
   collection: Collection;
@@ -81,6 +82,9 @@ export function TableContextMenu({
       });
 
       if (result.success) {
+        // Invalidate cache before refresh
+        invalidateCollectionsCache(sessionId, collection.namespace);
+        invalidateTableSchemaCache(sessionId, collection.namespace, tableName);
         toast.success(t('dropTable.success', { name: tableName }));
         onRefresh();
         setDangerAction(null);
@@ -125,6 +129,8 @@ export function TableContextMenu({
       });
 
       if (result.success) {
+        // Invalidate table schema cache (data changed, schema may have stats)
+        invalidateTableSchemaCache(sessionId, collection.namespace, tableName);
         toast.success(t('tableMenu.truncateSuccess', { name: tableName }));
         onRefresh();
         setDangerAction(null);

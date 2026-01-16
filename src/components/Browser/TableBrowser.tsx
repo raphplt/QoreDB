@@ -4,11 +4,11 @@ import {
   Namespace, 
   TableSchema, 
   QueryResult,
-  describeTable, 
   previewTable,
   executeQuery,
   Environment 
 } from '../../lib/tauri';
+import { useSchemaCache } from '../../hooks/useSchemaCache';
 import { DataGrid } from '../Grid/DataGrid';
 import { cn } from '@/lib/utils';
 import { 
@@ -70,24 +70,27 @@ export function TableBrowser({
   const [modalMode, setModalMode] = useState<'insert' | 'update'>('insert');
   const [selectedRow, setSelectedRow] = useState<Record<string, Value> | undefined>(undefined);
 
+  // Schema cache
+  const schemaCache = useSchemaCache(sessionId);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const startTime = performance.now();
-      // Load both schema and preview in parallel
-      const [schemaResult, dataResult] = await Promise.all([
-        describeTable(sessionId, namespace, tableName),
+      // Load schema from cache, data fresh
+      const [cachedSchema, dataResult] = await Promise.all([
+        schemaCache.getTableSchema(namespace, tableName),
         previewTable(sessionId, namespace, tableName, 100)
       ]);
       const endTime = performance.now();
       const totalTime = endTime - startTime;
 
-      if (schemaResult.success && schemaResult.schema) {
-        setSchema(schemaResult.schema);
-      } else if (schemaResult.error) {
-        setError(schemaResult.error);
+      if (cachedSchema) {
+        setSchema(cachedSchema);
+      } else {
+        setError('Failed to load table schema');
       }
 
       if (dataResult.success && dataResult.result) {
@@ -103,7 +106,7 @@ export function TableBrowser({
     } finally {
       setLoading(false);
     }
-  }, [sessionId, namespace, tableName]);
+  }, [sessionId, namespace, tableName, schemaCache]);
 
   useEffect(() => {
     loadData();

@@ -191,7 +191,15 @@
         "delete": "Delete",
         "deleting": "Deleting...",
         "deleteSuccess": "Successfully deleted {{count}} row(s)",
-        "deleteError": "Failed to delete rows"
+        "deleteError": "Failed to delete rows",
+        "download": "Download",
+        "downloadCSV": "Download as CSV file",
+        "downloadJSON": "Download as JSON file",
+        "noDataToExport": "No data to export",
+        "exportSuccess": "Exported {{count}} row(s) to {{path}}",
+        "exportError": "Failed to export data",
+        "copyToClipboard": "Copy to clipboard",
+        "downloadToFile": "Download to file"
     },
     "rowModal": {
         "insertTitle": "Insert New Row",
