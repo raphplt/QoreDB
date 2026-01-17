@@ -3,6 +3,7 @@
 
 pub mod commands;
 pub mod engine;
+pub mod policy;
 pub mod vault;
 
 use std::sync::Arc;
@@ -12,6 +13,7 @@ use engine::drivers::mongodb::MongoDriver;
 use engine::drivers::mysql::MySqlDriver;
 use engine::drivers::postgres::PostgresDriver;
 use engine::{DriverRegistry, SessionManager};
+use policy::SafetyPolicy;
 use vault::VaultLock;
 
 pub type SharedState = Arc<Mutex<AppState>>;
@@ -19,6 +21,7 @@ pub struct AppState {
     pub registry: Arc<DriverRegistry>,
     pub session_manager: Arc<SessionManager>,
     pub vault_lock: VaultLock,
+    pub policy: SafetyPolicy,
 }
 
 impl AppState {
@@ -32,6 +35,7 @@ impl AppState {
         let registry = Arc::new(registry);
         let session_manager = Arc::new(SessionManager::new(Arc::clone(&registry)));
         let mut vault_lock = VaultLock::new();
+        let policy = SafetyPolicy::load();
 
         let _ = vault_lock.auto_unlock_if_no_password();
 
@@ -39,6 +43,7 @@ impl AppState {
             registry,
             session_manager,
             vault_lock,
+            policy,
         }
     }
 }
@@ -92,6 +97,9 @@ pub fn run() {
             commands::vault::list_saved_connections,
             commands::vault::delete_saved_connection,
             commands::vault::get_connection_credentials,
+            // Policy commands
+            commands::policy::get_safety_policy,
+            commands::policy::set_safety_policy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

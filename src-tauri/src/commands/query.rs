@@ -12,6 +12,7 @@ use crate::engine::{TableSchema, types::{Collection, Namespace, QueryResult, Ses
 
 const READ_ONLY_BLOCKED: &str = "Operation blocked: read-only mode";
 const DANGEROUS_BLOCKED: &str = "Dangerous query blocked: confirmation required";
+const DANGEROUS_BLOCKED_POLICY: &str = "Dangerous query blocked by policy";
 
 fn is_sql_mutation(query: &str) -> bool {
     const MUTATION_KEYWORDS: [&str; 15] = [
@@ -206,9 +207,9 @@ pub async fn execute_query(
     acknowledged_dangerous: Option<bool>,
     timeout_ms: Option<u64>,
 ) -> Result<QueryResponse, String> {
-    let session_manager = {
+    let (session_manager, policy) = {
         let state = state.lock().await;
-        Arc::clone(&state.session_manager)
+        (Arc::clone(&state.session_manager), state.policy.clone())
     };
     let session = parse_session_id(&session_id)?;
 
@@ -248,16 +249,24 @@ pub async fn execute_query(
     };
 
     let acknowledged = acknowledged_dangerous.unwrap_or(false);
-    if is_production
-        && !driver.driver_id().eq_ignore_ascii_case("mongodb")
-        && is_dangerous_sql(&query)
-        && !acknowledged
-    {
-        return Ok(QueryResponse {
-            success: false,
-            result: None,
-            error: Some(DANGEROUS_BLOCKED.to_string()),
-        });
+    let is_sql_driver = !driver.driver_id().eq_ignore_ascii_case("mongodb");
+    let is_dangerous = is_sql_driver && is_dangerous_sql(&query);
+    if is_production && is_dangerous {
+        if policy.prod_block_dangerous_sql {
+            return Ok(QueryResponse {
+                success: false,
+                result: None,
+                error: Some(DANGEROUS_BLOCKED_POLICY.to_string()),
+            });
+        }
+
+        if policy.prod_require_confirmation && !acknowledged {
+            return Ok(QueryResponse {
+                success: false,
+                result: None,
+                error: Some(DANGEROUS_BLOCKED.to_string()),
+            });
+        }
     }
 
     let start_time = std::time::Instant::now();

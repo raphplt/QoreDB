@@ -10,7 +10,7 @@ import { ConnectionModal } from './components/Connection/ConnectionModal';
 import { SettingsPage } from './components/Settings/SettingsPage';
 import { StatusBar } from './components/Status/StatusBar';
 import { Button } from './components/ui/button';
-import { Search, Settings } from 'lucide-react';
+import { Search, Settings, X } from 'lucide-react';
 import { Namespace, SavedConnection, connectSavedConnection } from './lib/tauri';
 import { HistoryEntry } from './lib/history';
 import { Driver } from './lib/drivers';
@@ -27,19 +27,19 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [driver, setDriver] = useState<Driver>('postgres');
   const [activeConnection, setActiveConnection] = useState<SavedConnection | null>(null);
-  
+
   // Tab system
   const [tabs, setTabs] = useState<OpenTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0);
   const [schemaRefreshTrigger, setSchemaRefreshTrigger] = useState(0);
-  
+
   // Edit connection state
   const [editConnection, setEditConnection] = useState<SavedConnection | null>(null);
   const [editPassword, setEditPassword] = useState<string>('');
-  
+
   // Query injection from search
   const [pendingQuery, setPendingQuery] = useState<string | undefined>(undefined);
 
@@ -50,36 +50,36 @@ function App() {
   // Handle search result selection
   async function handleSearchSelect(result: SearchResult) {
     setSearchOpen(false);
-    
-    if (result.type === "connection" && result.data) {
-					// Connect to the selected connection
-					const conn = result.data as SavedConnection;
-					try {
-						const connectResult = await connectSavedConnection("default", conn.id);
-						if (connectResult.success && connectResult.session_id) {
-							toast.success(t("sidebar.connectedTo", { name: conn.name }));
-							handleConnected(connectResult.session_id, {
-								...conn,
-								environment: conn.environment,
-								read_only: conn.read_only,
-							});
-							setSidebarRefreshTrigger((prev) => prev + 1);
-						} else {
-							toast.error(t("sidebar.connectionToFailed", { name: conn.name }), {
-								description: connectResult.error,
-							});
-						}
-					} catch (err) {
-						toast.error(t("sidebar.connectError"));
-					}
-				} else if (result.type === "query" || result.type === "favorite") {
-					const entry = result.data as HistoryEntry;
-					if (entry?.query) {
-						setPendingQuery(entry.query);
-						setActiveTabId(null);
-						setSettingsOpen(false);
-					}
-				}
+
+    if (result.type === 'connection' && result.data) {
+      // Connect to the selected connection
+      const conn = result.data as SavedConnection;
+      try {
+        const connectResult = await connectSavedConnection('default', conn.id);
+        if (connectResult.success && connectResult.session_id) {
+          toast.success(t('sidebar.connectedTo', { name: conn.name }));
+          handleConnected(connectResult.session_id, {
+            ...conn,
+            environment: conn.environment,
+            read_only: conn.read_only,
+          });
+          setSidebarRefreshTrigger(prev => prev + 1);
+        } else {
+          toast.error(t('sidebar.connectionToFailed', { name: conn.name }), {
+            description: connectResult.error,
+          });
+        }
+      } catch (err) {
+        toast.error(t('sidebar.connectError'));
+      }
+    } else if (result.type === 'query' || result.type === 'favorite') {
+      const entry = result.data as HistoryEntry;
+      if (entry?.query) {
+        setPendingQuery(entry.query);
+        setActiveTabId(null);
+        setSettingsOpen(false);
+      }
+    }
   }
 
   // Global keyboard shortcuts
@@ -137,11 +137,12 @@ function App() {
 
   function openTab(tab: OpenTab) {
     // Check if already open
-    const existing = tabs.find(t => 
-      t.type === tab.type && 
-      t.namespace?.database === tab.namespace?.database &&
-      t.namespace?.schema === tab.namespace?.schema &&
-      t.tableName === tab.tableName
+    const existing = tabs.find(
+      t =>
+        t.type === tab.type &&
+        t.namespace?.database === tab.namespace?.database &&
+        t.namespace?.schema === tab.namespace?.schema &&
+        t.tableName === tab.tableName
     );
     if (existing) {
       setActiveTabId(existing.id);
@@ -186,17 +187,15 @@ function App() {
   }
 
   function handleConnectionSaved(updatedConnection: SavedConnection) {
-			const isEditingActive = activeConnection?.id === updatedConnection.id;
-			if (isEditingActive) {
-				setActiveConnection((prev) =>
-					prev ? { ...prev, ...updatedConnection } : updatedConnection
-				);
-				setDriver(updatedConnection.driver as Driver);
-			}
+    const isEditingActive = activeConnection?.id === updatedConnection.id;
+    if (isEditingActive) {
+      setActiveConnection(prev => (prev ? { ...prev, ...updatedConnection } : updatedConnection));
+      setDriver(updatedConnection.driver as Driver);
+    }
 
-			handleCloseConnectionModal();
-			setSidebarRefreshTrigger((prev) => prev + 1);
-		}
+    handleCloseConnectionModal();
+    setSidebarRefreshTrigger(prev => prev + 1);
+  }
 
   function handleCloseConnectionModal() {
     setConnectionModalOpen(false);
@@ -223,10 +222,16 @@ function App() {
               variant="ghost"
               size="icon"
               onClick={() => setSettingsOpen(!settingsOpen)}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground transition-transform duration-150 active:scale-95"
               title={t('settings.title')}
             >
-              <Settings size={20} />
+              <span
+                className={`inline-flex transition-transform duration-200 ${
+                  settingsOpen ? 'rotate-90 scale-110' : 'rotate-0 scale-100'
+                }`}
+              >
+                {settingsOpen ? <X size={16} /> : <Settings size={16} />}
+              </span>
             </Button>
           </header>
 

@@ -91,7 +91,15 @@
         "storeHistory": "Stocker l'historique des requêtes",
         "storeHistoryDescription": "Enregistre un historique local masqué pour faciliter le recall.",
         "storeErrorLogs": "Stocker les logs d'erreur",
-        "storeErrorLogsDescription": "Enregistre des erreurs masquées pour aider au debug."
+        "storeErrorLogsDescription": "Enregistre des erreurs masquées pour aider au debug.",
+        "safetyPolicy": "Sécurité production",
+        "safetyPolicyDescription": "Contrôlez les garde-fous côté backend pour la production.",
+        "safetyPolicyRequireConfirmation": "Confirmer les requêtes SQL dangereuses",
+        "safetyPolicyRequireConfirmationDescription": "Demande une confirmation explicite avant d'exécuter du SQL destructif en production.",
+        "safetyPolicyBlockDangerous": "Bloquer les requêtes SQL dangereuses",
+        "safetyPolicyBlockDangerousDescription": "Refuse le SQL destructif en production même après confirmation.",
+        "safetyPolicyNote": "Les variables d'environnement peuvent surcharger ces réglages en déploiement géré.",
+        "safetyPolicyError": "Impossible de charger ou sauvegarder la politique de sécurité."
     },
     "table": {
         "rows": "lignes",

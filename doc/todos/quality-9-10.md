@@ -4,10 +4,11 @@ Goal: raise architecture/extensibility, reliability, security, observability, an
 
 ## 1) Trust Boundaries (Security + Reliability)
 
-- [ ] Make backend the source of truth for `environment` and `read_only` by loading them from vault metadata whenever a connection is saved.
-- [ ] Add a `connect_by_id(connection_id)` command that uses vault metadata + credentials; deprecate or restrict `connect(config)` to explicit "unsafe/dev-only" usage.
-- [ ] Validate all connection inputs server-side (driver, host, port, ssl, env) and normalize `environment` to a strict enum.
-- [ ] Add a backend policy file (or config) for production safety rules; do not trust UI flags.
+- [x] Make backend the source of truth for `environment` and `read_only` by loading them from vault metadata whenever a connection is saved.
+- [x] Add a `connect_by_id(connection_id)` command that uses vault metadata + credentials; deprecate or restrict `connect(config)` to explicit "unsafe/dev-only" usage.
+- [x] Validate all connection inputs server-side (driver, host, port, ssl, env) and normalize `environment` to a strict enum.
+- [x] Add a backend policy file (or config) for production safety rules; do not trust UI flags.
+- [x] Expose production safety policy in Settings with persisted config; env vars override if set.
 - [ ] Ensure secrets never reach logs: use a `SecretString`-style wrapper and redact query text where needed.
 
 ## 2) Query Cancellation + Timeouts (Reliability + Scalability)

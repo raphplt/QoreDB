@@ -90,6 +90,17 @@ export interface VaultResponse {
 	error?: string;
 }
 
+export interface SafetyPolicy {
+	prod_require_confirmation: boolean;
+	prod_block_dangerous_sql: boolean;
+}
+
+export interface SafetyPolicyResponse {
+	success: boolean;
+	policy?: SafetyPolicy;
+	error?: string;
+}
+
 export interface Namespace {
 	database: string;
 	schema?: string;
@@ -155,6 +166,20 @@ export async function disconnect(
 
 export async function listSessions(): Promise<SessionListItem[]> {
 	return invoke("list_sessions");
+}
+
+// ============================================
+// POLICY COMMANDS
+// ============================================
+
+export async function getSafetyPolicy(): Promise<SafetyPolicyResponse> {
+	return invoke("get_safety_policy");
+}
+
+export async function setSafetyPolicy(
+	policy: SafetyPolicy,
+): Promise<SafetyPolicyResponse> {
+	return invoke("set_safety_policy", { policy });
 }
 
 // ============================================

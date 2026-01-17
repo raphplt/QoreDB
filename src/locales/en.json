@@ -91,7 +91,15 @@
         "storeHistory": "Store query history",
         "storeHistoryDescription": "Saves a redacted history locally for easier recall.",
         "storeErrorLogs": "Store error logs",
-        "storeErrorLogsDescription": "Saves redacted error details to help debugging."
+        "storeErrorLogsDescription": "Saves redacted error details to help debugging.",
+        "safetyPolicy": "Production Safety",
+        "safetyPolicyDescription": "Control server-side guardrails for production queries.",
+        "safetyPolicyRequireConfirmation": "Require confirmation for dangerous SQL",
+        "safetyPolicyRequireConfirmationDescription": "Ask for explicit confirmation before running destructive SQL in production.",
+        "safetyPolicyBlockDangerous": "Block dangerous SQL in production",
+        "safetyPolicyBlockDangerousDescription": "Reject destructive SQL in production even if confirmed.",
+        "safetyPolicyNote": "Environment variables can override these settings in managed deployments.",
+        "safetyPolicyError": "Unable to load or save safety policy settings."
     },
     "table": {
         "rows": "rows",
