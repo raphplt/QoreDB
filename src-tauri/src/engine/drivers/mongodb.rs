@@ -128,6 +128,54 @@ impl MongoDriver {
             "Invalid query format. Use JSON: {\"database\": \"db\", \"collection\": \"col\", \"query\": {...}}",
         ))
     }
+
+    // Helper to convert universal Value back to BSON
+    fn value_to_bson(value: &Value) -> mongodb::bson::Bson {
+        use mongodb::bson::Bson;
+        match value {
+            Value::Null => Bson::Null,
+            Value::Bool(b) => Bson::Boolean(*b),
+            Value::Int(i) => Bson::Int64(*i),
+            Value::Float(f) => Bson::Double(*f),
+            Value::Text(s) => {
+                // Try to parse as ObjectId if it looks like one
+                if let Ok(oid) = mongodb::bson::oid::ObjectId::parse_str(s) {
+                    Bson::ObjectId(oid)
+                } else {
+                    Bson::String(s.clone())
+                }
+            },
+            Value::Bytes(b) => Bson::Binary(mongodb::bson::Binary {
+                subtype: mongodb::bson::spec::BinarySubtype::Generic,
+                bytes: b.clone(),
+            }),
+            Value::Json(j) => mongodb::bson::to_bson(j).unwrap_or(Bson::Null),
+            Value::Array(arr) => {
+                Bson::Array(arr.iter().map(Self::value_to_bson).collect())
+            }
+        }
+    }
+
+    // Helper to convert RowData to Document
+    fn row_data_to_document(data: &QRowData) -> Document {
+        let mut doc = Document::new();
+        for (key, value) in &data.columns {
+            // Skip _id if it's null (let MongoDB generate it on insert)
+            if key == "_id" {
+                if let Value::Null = value {
+                    continue;
+                }
+                // Handle empty string _id as null/skip for inserts 
+                if let Value::Text(s) = value {
+                    if s.is_empty() {
+                        continue;
+                    }
+                }
+            }
+            doc.insert(key, Self::value_to_bson(value));
+        }
+        doc
+    }
 }
 
 impl Default for MongoDriver {
@@ -135,6 +183,9 @@ impl Default for MongoDriver {
         Self::new()
     }
 }
+
+// Need to import QRowData alias if not already present or use crate::engine::types::RowData
+use crate::engine::types::RowData as QRowData;
 
 #[async_trait]
 impl DataEngine for MongoDriver {
@@ -515,5 +566,114 @@ impl DataEngine for MongoDriver {
     fn supports_transactions(&self) -> bool {
         // Returns false because we can't know at this point if the server is a replica set
         false
+    }
+    
+    // ==================== Mutation Methods ====================
+
+    async fn insert_row(
+        &self,
+        session: SessionId,
+        namespace: &Namespace,
+        table: &str,
+        data: &QRowData,
+    ) -> EngineResult<QueryResult> {
+        let sessions = self.sessions.read().await;
+        let client = sessions
+            .get(&session)
+            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+
+        let start = Instant::now();
+
+        let collection = client
+            .database(&namespace.database)
+            .collection::<Document>(table);
+
+        let doc = Self::row_data_to_document(data);
+
+        collection
+            .insert_one(doc)
+            .await
+            .map_err(|e| EngineError::execution_error(e.to_string()))?;
+
+        let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+
+        Ok(QueryResult::with_affected_rows(1, execution_time_ms))
+    }
+
+    async fn update_row(
+        &self,
+        session: SessionId,
+        namespace: &Namespace,
+        table: &str,
+        primary_key: &QRowData,
+        data: &QRowData,
+    ) -> EngineResult<QueryResult> {
+        let sessions = self.sessions.read().await;
+        let client = sessions
+            .get(&session)
+            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+
+        let start = Instant::now();
+
+        let collection = client
+            .database(&namespace.database)
+            .collection::<Document>(table);
+
+        // Construct filter from primary key (usually _id)
+        let mut filter = Document::new();
+        for (key, value) in &primary_key.columns {
+            filter.insert(key, Self::value_to_bson(value));
+        }
+
+        // Construct update document
+        let update_doc = Self::row_data_to_document(data);
+        let update = doc! { "$set": update_doc };
+
+        let result = collection
+            .update_one(filter, update)
+            .await
+            .map_err(|e| EngineError::execution_error(e.to_string()))?;
+
+        let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+
+        Ok(QueryResult::with_affected_rows(result.modified_count, execution_time_ms))
+    }
+
+    async fn delete_row(
+        &self,
+        session: SessionId,
+        namespace: &Namespace,
+        table: &str,
+        primary_key: &QRowData,
+    ) -> EngineResult<QueryResult> {
+        let sessions = self.sessions.read().await;
+        let client = sessions
+            .get(&session)
+            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+
+        let start = Instant::now();
+
+        let collection = client
+            .database(&namespace.database)
+            .collection::<Document>(table);
+
+        // Construct filter from primary key (usually _id)
+        let mut filter = Document::new();
+        for (key, value) in &primary_key.columns {
+            filter.insert(key, Self::value_to_bson(value));
+        }
+
+        let result = collection
+            .delete_one(filter)
+            .await
+            .map_err(|e| EngineError::execution_error(e.to_string()))?;
+
+        let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+
+        Ok(QueryResult::with_affected_rows(result.deleted_count, execution_time_ms))
+    }
+
+    fn supports_mutations(&self) -> bool {
+        true
     }
 }

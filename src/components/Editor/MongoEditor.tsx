@@ -32,6 +32,10 @@ export const MONGO_TEMPLATES = {
   { /* filter */ },
   { $set: { /* update */ } }
 )`,
+  updateMany: `db.collection.updateMany(
+  { /* filter */ },
+  { $set: { /* update */ } }
+)`,
   deleteOne: `db.collection.deleteOne({
   // filter
 })`,

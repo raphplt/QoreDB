@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { SQLEditor } from '../Editor/SQLEditor';
 import { MongoEditor, MONGO_TEMPLATES } from '../Editor/MongoEditor';
 import { DataGrid } from '../Grid/DataGrid';
-import { JSONViewer } from '../Results/JSONViewer';
+import { DocumentEditorModal } from '../Editor/DocumentEditorModal';
 import { QueryHistory } from '../History/QueryHistory';
 import { executeQuery, cancelQuery, QueryResult, Environment } from '../../lib/tauri';
 import { addToHistory } from '../../lib/history';
 import { logError } from '../../lib/errorLog';
 import { Button } from '@/components/ui/button';
-import { Play, Square, AlertCircle, History, Shield, Lock } from 'lucide-react';
+import { Play, Square, AlertCircle, History, Shield, Lock, Plus } from 'lucide-react';
 import { ENVIRONMENT_CONFIG, getDangerousQueryTarget, isDangerousQuery, isDropDatabaseQuery, isMutationQuery } from '../../lib/environment';
 import { Driver } from '../../lib/drivers';
 import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
@@ -17,377 +17,491 @@ import { DangerConfirmDialog } from '../Guard/DangerConfirmDialog';
 import { toast } from 'sonner';
 
 interface QueryPanelProps {
-  sessionId: string | null;
-  dialect?: Driver;
-  environment?: Environment;
-  readOnly?: boolean;
-  connectionName?: string;
-  connectionDatabase?: string;
-  initialQuery?: string;
+	sessionId: string | null;
+	dialect?: Driver;
+	environment?: Environment;
+	readOnly?: boolean;
+	connectionName?: string;
+	connectionDatabase?: string;
+	initialQuery?: string;
 }
 
 export function QueryPanel({
-  sessionId,
-  dialect = 'postgres',
-  environment = 'development',
-  readOnly = false,
-  connectionName,
-  connectionDatabase,
-  initialQuery,
+	sessionId,
+	dialect = "postgres",
+	environment = "development",
+	readOnly = false,
+	connectionName,
+	connectionDatabase,
+	initialQuery,
 }: QueryPanelProps) {
-  const { t } = useTranslation();
-  const isMongo = dialect === 'mongodb';
-  const defaultQuery = isMongo ? MONGO_TEMPLATES.find : 'SELECT 1;';
-  
-  const [query, setQuery] = useState(initialQuery || defaultQuery);
-  const [result, setResult] = useState<QueryResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [dangerConfirmOpen, setDangerConfirmOpen] = useState(false);
-  const [dangerConfirmLabel, setDangerConfirmLabel] = useState<string | undefined>(undefined);
-  const [dangerConfirmInfo, setDangerConfirmInfo] = useState<string | undefined>(undefined);
-  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+	const { t } = useTranslation();
+	const isMongo = dialect === "mongodb";
+	const defaultQuery = isMongo ? MONGO_TEMPLATES.find : "SELECT 1;";
 
-  // Update query when initialQuery prop changes
-  useEffect(() => {
-    if (initialQuery) {
-      setQuery(initialQuery);
-    }
-  }, [initialQuery]);
+	const [query, setQuery] = useState(initialQuery || defaultQuery);
+	const [result, setResult] = useState<QueryResult | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [cancelling, setCancelling] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [historyOpen, setHistoryOpen] = useState(false);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [dangerConfirmOpen, setDangerConfirmOpen] = useState(false);
+	const [dangerConfirmLabel, setDangerConfirmLabel] = useState<
+		string | undefined
+	>(undefined);
+	const [dangerConfirmInfo, setDangerConfirmInfo] = useState<string | undefined>(
+		undefined
+	);
+	const [pendingQuery, setPendingQuery] = useState<string | null>(null);
 
-  const envConfig = ENVIRONMENT_CONFIG[environment];
+    // Document Modal State
+    const [docModalOpen, setDocModalOpen] = useState(false);
+    const [docModalMode, setDocModalMode] = useState<'insert' | 'edit'>('insert');
+    const [docModalData, setDocModalData] = useState('{}'); // JSON string
+    const [docOriginalId, setDocOriginalId] = useState<string | undefined>(undefined);
+    // Assuming we can infer collection from query if simple find
+    // Or we need to parse it? 
+    // For now, let's use the one from parsed query if possible, or manual input?
+    // Actually, simple find templates like `db.collection.find` have collection name.
+    // We can extract it from the query text or asking user? 
+    // Better: extract from query since we know `database` and `collection` from `parse_query` in backend.
+    // The backend `execute` could return the collection name in metadata? 
+    // Currently `QueryResult` doesn't have it.
+    // BUT we are in the `QueryPanel`. The `query` state contains the text.
+    // We can try to regex extract it for the "New Document" button.
+    // Let's implement a simple extractor for `db.collection.func` pattern.
 
-  const runQuery = useCallback(async (queryToRun: string, acknowledgedDangerous = false) => {
-    if (!sessionId) {
-      setError(t('query.noConnectionError'));
-      return;
-    }
+    const getCollectionFromQuery = (q: string) => {
+        const match = q.trim().match(/^db\.([a-zA-Z0-9_-]+)\./);
+        return match ? match[1] : '';
+    };
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
+	useEffect(() => {
+		if (initialQuery) {
+			setQuery(initialQuery);
+		}
+	}, [initialQuery]);
 
-    const startTime = performance.now();
-    try {
-      const response = await executeQuery(sessionId, queryToRun, {
-        acknowledgedDangerous,
-      });
-      const endTime = performance.now();
-      const totalTime = endTime - startTime;
-      
-      if (response.success && response.result) {
-        const enrichedResult = {
-          ...response.result,
-          total_time_ms: totalTime
-        };
-        setResult(enrichedResult);
-        
-        // Save to history
-        addToHistory({
-          query: queryToRun,
-          sessionId,
-          driver: dialect,
-          executedAt: Date.now(),
-          executionTimeMs: response.result.execution_time_ms,
-          totalTimeMs: totalTime,
-          rowCount: response.result.rows.length,
-        });
-      } else {
-        setError(response.error || t('query.queryFailed'));
-        // Save failed query to history
-        addToHistory({
-          query: queryToRun,
-          sessionId,
-          driver: dialect,
-          executedAt: Date.now(),
-          executionTimeMs: 0,
-          totalTimeMs: totalTime, 
-          error: response.error || t('query.queryFailed'),
-        });
-        logError('QueryPanel', response.error || t('query.queryFailed'), queryToRun, sessionId);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('common.error');
-      setError(errorMessage);
-      logError('QueryPanel', errorMessage, queryToRun, sessionId || undefined);
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, dialect, t]);
+	const envConfig = ENVIRONMENT_CONFIG[environment];
 
-  const handleExecute = useCallback(async (queryText?: string) => {
-    if (!sessionId) {
-      setError(t('query.noConnectionError'));
-      return;
-    }
+	const runQuery = useCallback(
+		async (queryToRun: string, acknowledgedDangerous = false) => {
+			if (!sessionId) {
+				setError(t("query.noConnectionError"));
+				return;
+			}
 
-    const queryToRun = queryText || query;
-    if (!queryToRun.trim()) return;
+			setLoading(true);
+			setError(null);
+			setResult(null);
 
-    const isMutation = isMutationQuery(queryToRun, isMongo ? 'mongodb' : 'sql');
+			const startTime = performance.now();
+			try {
+				const response = await executeQuery(sessionId, queryToRun, {
+					acknowledgedDangerous,
+				});
+				const endTime = performance.now();
+				const totalTime = endTime - startTime;
 
-    if (readOnly && isMutation) {
-      toast.error(t('environment.blocked'));
-      return;
-    }
+				if (response.success && response.result) {
+					const enrichedResult = {
+						...response.result,
+						total_time_ms: totalTime,
+					};
+					setResult(enrichedResult);
 
-    const isDangerous = !isMongo && isDangerousQuery(queryToRun);
-    if (isDangerous) {
-      const fallbackLabel = (connectionDatabase || connectionName || 'PROD').trim() || 'PROD';
-      const target = getDangerousQueryTarget(queryToRun);
-      const isDropDatabase = !isMongo && isDropDatabaseQuery(queryToRun);
-      const requiresTyping = environment === 'production' || isDropDatabase;
-      const warningInfoParts = [];
-      if (target) {
-        warningInfoParts.push(t('environment.dangerousQueryTarget', { target }));
-      }
-      if (environment === 'production') {
-        warningInfoParts.push(t('environment.prodWarning'));
-      }
-      setPendingQuery(queryToRun);
-      setDangerConfirmLabel(requiresTyping ? target || fallbackLabel : undefined);
-      setDangerConfirmInfo(warningInfoParts.length ? warningInfoParts.join(' | ') : undefined);
-      setDangerConfirmOpen(true);
-      return;
-    }
+					addToHistory({
+						query: queryToRun,
+						sessionId,
+						driver: dialect,
+						executedAt: Date.now(),
+						executionTimeMs: response.result.execution_time_ms,
+						totalTimeMs: totalTime,
+						rowCount: response.result.rows.length,
+					});
+				} else {
+					setError(response.error || t("query.queryFailed"));
+					addToHistory({
+						query: queryToRun,
+						sessionId,
+						driver: dialect,
+						executedAt: Date.now(),
+						executionTimeMs: 0,
+						totalTimeMs: totalTime,
+						error: response.error || t("query.queryFailed"),
+					});
+					logError(
+						"QueryPanel",
+						response.error || t("query.queryFailed"),
+						queryToRun,
+						sessionId
+					);
+				}
+			} catch (err) {
+				const errorMessage = err instanceof Error ? err.message : t("common.error");
+				setError(errorMessage);
+				logError("QueryPanel", errorMessage, queryToRun, sessionId || undefined);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[sessionId, dialect, t]
+	);
 
-    if (environment === 'production' && isMutation) {
-      setPendingQuery(queryToRun);
-      setConfirmOpen(true);
-      return;
-    }
+	const handleExecute = useCallback(
+		async (queryText?: string) => {
+			if (!sessionId) {
+				setError(t("query.noConnectionError"));
+				return;
+			}
 
-    await runQuery(queryToRun);
-  }, [sessionId, query, isMongo, readOnly, environment, t, runQuery, connectionDatabase, connectionName]);
+			const queryToRun = queryText || query;
+			if (!queryToRun.trim()) return;
 
-  const handleConfirm = useCallback(async () => {
-    if (!pendingQuery) {
-      setConfirmOpen(false);
-      return;
-    }
+			const isMutation = isMutationQuery(queryToRun, isMongo ? "mongodb" : "sql");
 
-    const queryToRun = pendingQuery;
-    setPendingQuery(null);
-    setConfirmOpen(false);
-    await runQuery(queryToRun);
-  }, [pendingQuery, runQuery]);
+			if (readOnly && isMutation) {
+				toast.error(t("environment.blocked"));
+				return;
+			}
 
-  const handleDangerConfirm = useCallback(async () => {
-    if (!pendingQuery) {
-      setDangerConfirmOpen(false);
-      return;
-    }
+			const isDangerous = !isMongo && isDangerousQuery(queryToRun);
+			if (isDangerous) {
+				const fallbackLabel =
+					(connectionDatabase || connectionName || "PROD").trim() || "PROD";
+				const target = getDangerousQueryTarget(queryToRun);
+				const isDropDatabase = !isMongo && isDropDatabaseQuery(queryToRun);
+				const requiresTyping = environment === "production" || isDropDatabase;
+				const warningInfoParts = [];
+				if (target) {
+					warningInfoParts.push(t("environment.dangerousQueryTarget", { target }));
+				}
+				if (environment === "production") {
+					warningInfoParts.push(t("environment.prodWarning"));
+				}
+				setPendingQuery(queryToRun);
+				setDangerConfirmLabel(requiresTyping ? target || fallbackLabel : undefined);
+				setDangerConfirmInfo(
+					warningInfoParts.length ? warningInfoParts.join(" | ") : undefined
+				);
+				setDangerConfirmOpen(true);
+				return;
+			}
 
-    const queryToRun = pendingQuery;
-    setPendingQuery(null);
-    setDangerConfirmOpen(false);
-    setDangerConfirmInfo(undefined);
-    setDangerConfirmLabel(undefined);
-    await runQuery(queryToRun, true);
-  }, [pendingQuery, runQuery]);
+			if (environment === "production" && isMutation) {
+				setPendingQuery(queryToRun);
+				setConfirmOpen(true);
+				return;
+			}
 
-  const handleCancel = useCallback(async () => {
-    if (!sessionId || !loading) return;
+			await runQuery(queryToRun);
+		},
+		[
+			sessionId,
+			query,
+			isMongo,
+			readOnly,
+			environment,
+			t,
+			runQuery,
+			connectionDatabase,
+			connectionName,
+		]
+	);
 
-    setCancelling(true);
-    try {
-      await cancelQuery(sessionId);
-    } catch (err) {
-      console.error('Failed to cancel:', err);
-    } finally {
-      setCancelling(false);
-      setLoading(false);
-    }
-  }, [sessionId, loading]);
+	const handleConfirm = useCallback(async () => {
+		if (!pendingQuery) {
+			setConfirmOpen(false);
+			return;
+		}
 
-  return (
-			<div className="flex flex-col h-full bg-background rounded-lg border border-border shadow-sm overflow-hidden">
-				{/* Toolbar */}
-				<div className="flex items-center gap-2 p-2 border-b border-border bg-muted/20">
+		const queryToRun = pendingQuery;
+		setPendingQuery(null);
+		setConfirmOpen(false);
+		await runQuery(queryToRun);
+	}, [pendingQuery, runQuery]);
+
+	const handleDangerConfirm = useCallback(async () => {
+		if (!pendingQuery) {
+			setDangerConfirmOpen(false);
+			return;
+		}
+
+		const queryToRun = pendingQuery;
+		setPendingQuery(null);
+		setDangerConfirmOpen(false);
+		setDangerConfirmInfo(undefined);
+		setDangerConfirmLabel(undefined);
+		await runQuery(queryToRun, true);
+	}, [pendingQuery, runQuery]);
+
+	const handleCancel = useCallback(async () => {
+		if (!sessionId || !loading) return;
+
+		setCancelling(true);
+		try {
+			await cancelQuery(sessionId);
+		} catch (err) {
+			console.error("Failed to cancel:", err);
+		} finally {
+			setCancelling(false);
+			setLoading(false);
+		}
+	}, [sessionId, loading]);
+
+    // Row Click Handler
+    const handleRowClick = useCallback((row: any) => {
+        if (!isMongo) return;
+        setDocModalMode('edit');
+        setDocModalData(JSON.stringify(row, null, 2));
+        setDocOriginalId(row._id ? String(row._id) : undefined);
+        setDocModalOpen(true);
+    }, [isMongo]);
+
+    const handleNewDocument = () => {
+        setDocModalMode('insert');
+        setDocModalData('{\n  \n}');
+        setDocOriginalId(undefined);
+        setDocModalOpen(true);
+    };
+
+    const runCurrentQuery = () => handleExecute();
+
+	return (
+		<div className="flex flex-col h-full bg-background rounded-lg border border-border shadow-sm overflow-hidden">
+			<div className="flex items-center gap-2 p-2 border-b border-border bg-muted/20">
+				<Button
+					onClick={() => handleExecute()}
+					disabled={loading || !sessionId}
+					className="w-24 gap-2"
+				>
+					{loading ? (
+						<span className="flex items-center gap-2">{t("query.running")}</span>
+					) : (
+						<>
+							<Play size={16} className="fill-current" /> {t("query.run")}
+						</>
+					)}
+				</Button>
+
+				{sessionId && environment !== "development" && (
+					<span
+						className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border"
+						style={{
+							backgroundColor: envConfig.bgSoft,
+							color: envConfig.color,
+							borderColor: envConfig.color,
+						}}
+					>
+						<Shield size={12} />
+						{envConfig.labelShort}
+					</span>
+				)}
+
+				{sessionId && readOnly && (
+					<span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border border-warning/30 bg-warning/10 text-warning">
+						<Lock size={12} />
+						{t("environment.readOnly")}
+					</span>
+				)}
+
+				{loading && (
 					<Button
-						onClick={() => handleExecute()}
-						disabled={loading || !sessionId}
+						variant="destructive"
+						onClick={handleCancel}
+						disabled={cancelling}
 						className="w-24 gap-2"
 					>
-						{loading ? (
-							<span className="flex items-center gap-2">{t("query.running")}</span>
-						) : (
-							<>
-								<Play size={16} className="fill-current" /> {t("query.run")}
-							</>
-						)}
+						<Square size={16} className="fill-current" /> {t("query.stop")}
 					</Button>
+				)}
 
-					{/* Environment Badge - prominent for staging/prod */}
-					{sessionId && environment !== "development" && (
-						<span
-							className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border"
-							style={{
-								backgroundColor: envConfig.bgSoft,
-								color: envConfig.color,
-								borderColor: envConfig.color,
-							}}
-						>
-							<Shield size={12} />
-							{envConfig.labelShort}
-						</span>
-					)}
+                {/* New Document Button for MongoDB */}
+                {isMongo && sessionId && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-2 text-muted-foreground hover:text-foreground ml-2"
+                        onClick={handleNewDocument}
+                        title={t("document.new")}
+                    >
+                        <Plus size={16} className="mr-1" />
+                        <span className="hidden sm:inline">{t("document.new")}</span>
+                    </Button>
+                )}
 
-					{sessionId && readOnly && (
-						<span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border border-warning/30 bg-warning/10 text-warning">
-							<Lock size={12} />
-							{t("environment.readOnly")}
-						</span>
-					)}
-
-					{loading && (
-						<Button
-							variant="destructive"
-							onClick={handleCancel}
-							disabled={cancelling}
-							className="w-24 gap-2"
-						>
-							<Square size={16} className="fill-current" /> {t("query.stop")}
-						</Button>
-					)}
-
-					{isMongo && (
-						<select
-							className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-							onChange={(e) =>
-								setQuery(
-									MONGO_TEMPLATES[e.target.value as keyof typeof MONGO_TEMPLATES] ||
-										query
-								)
-							}
-							defaultValue=""
-						>
-							<option value="" disabled>
-								Templates...
-							</option>
-							<option value="find">find()</option>
-							<option value="findOne">findOne()</option>
-							<option value="aggregate">aggregate()</option>
-							<option value="insertOne">insertOne()</option>
-							<option value="updateOne">updateOne()</option>
-							<option value="deleteOne">deleteOne()</option>
-						</select>
-					)}
-
-					<div className="flex-1" />
-
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => setHistoryOpen(true)}
-						className="h-9 px-2 text-muted-foreground hover:text-foreground"
-						title={t("query.history")}
+				{isMongo && (
+					<select
+						className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+						onChange={(e) =>
+							setQuery(
+								MONGO_TEMPLATES[e.target.value as keyof typeof MONGO_TEMPLATES] || query
+							)
+						}
+						defaultValue=""
 					>
-						<History size={16} className="mr-1" />
-						{t("query.history")}
-					</Button>
+						<option value="" disabled>
+							Templates...
+						</option>
+						<option value="find">find()</option>
+						<option value="findOne">findOne()</option>
+						<option value="aggregate">aggregate()</option>
+						<option value="insertOne">insertOne()</option>
+						<option value="updateOne">updateOne()</option>
+						<option value="deleteOne">deleteOne()</option>
+					</select>
+				)}
 
-					<span className="text-xs text-muted-foreground hidden sm:inline-block">
-						{t("query.runHint")}
+				<div className="flex-1" />
+
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setHistoryOpen(true)}
+					className="h-9 px-2 text-muted-foreground hover:text-foreground"
+					title={t("query.history")}
+				>
+					<History size={16} className="mr-1" />
+					{t("query.history")}
+				</Button>
+
+				<span className="text-xs text-muted-foreground hidden sm:inline-block">
+					{t("query.runHint")}
+				</span>
+
+				{!sessionId && (
+					<span className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded-full border border-warning/20">
+						<AlertCircle size={12} /> {t("query.noConnection")}
 					</span>
-
-					{!sessionId && (
-						<span className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded-full border border-warning/20">
-							<AlertCircle size={12} /> {t("query.noConnection")}
-						</span>
-					)}
-				</div>
-
-				<div className="flex-1 min-h-50 border-b border-border relative">
-					{isMongo ? (
-						<MongoEditor
-							value={query}
-							onChange={setQuery}
-							onExecute={() => handleExecute()}
-							readOnly={loading}
-						/>
-					) : (
-						<SQLEditor
-							value={query}
-							onChange={setQuery}
-							onExecute={() => handleExecute()}
-							onExecuteSelection={(selection) => handleExecute(selection)}
-							dialect={dialect as "postgres" | "mysql"}
-							readOnly={loading}
-						/>
-					)}
-				</div>
-
-				{/* Results / Error */}
-				<div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden relative">
-					{error ? (
-						<div className="p-4 m-4 rounded-md bg-error/10 border border-error/20 text-error flex items-start gap-3">
-							<AlertCircle className="mt-0.5 shrink-0" size={18} />
-							<pre className="text-sm font-mono whitespace-pre-wrap break-all">
-								{error}
-							</pre>
-						</div>
-					) : result ? (
-						isMongo ? (
-							<JSONViewer data={result.rows.map((r) => r.values[0])} />
-						) : (
-							<div className="flex-1 overflow-hidden p-2 flex flex-col h-full">
-								{/* DataGrid fills container */}
-								<DataGrid result={result} />
-							</div>
-						)
-					) : (
-						<div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-							{t("query.noResults")}
-						</div>
-					)}
-				</div>
-
-				{/* History Modal */}
-				<QueryHistory
-					isOpen={historyOpen}
-					onClose={() => setHistoryOpen(false)}
-					onSelectQuery={setQuery}
-					sessionId={sessionId || undefined}
-				/>
-
-				<ProductionConfirmDialog
-					open={confirmOpen}
-					onOpenChange={(open) => {
-						setConfirmOpen(open);
-						if (!open) {
-							setPendingQuery(null);
-						}
-					}}
-					title={t("environment.confirmTitle")}
-					confirmationLabel={
-						(connectionDatabase || connectionName || "PROD").trim() || "PROD"
-					}
-					confirmLabel={t("common.confirm")}
-					onConfirm={handleConfirm}
-				/>
-
-				<DangerConfirmDialog
-					open={dangerConfirmOpen}
-					onOpenChange={(open) => {
-						setDangerConfirmOpen(open);
-						if (!open) {
-							setPendingQuery(null);
-							setDangerConfirmInfo(undefined);
-							setDangerConfirmLabel(undefined);
-						}
-					}}
-					title={t('environment.dangerousQueryTitle')}
-					description={t('environment.dangerousQuery')}
-					warningInfo={dangerConfirmInfo}
-					confirmationLabel={dangerConfirmLabel}
-					confirmLabel={t('common.confirm')}
-					onConfirm={handleDangerConfirm}
-				/>
+				)}
 			</div>
-		);
+
+			<div className="flex-1 min-h-50 border-b border-border relative">
+				{isMongo ? (
+					<MongoEditor
+						value={query}
+						onChange={setQuery}
+						onExecute={() => handleExecute()}
+						readOnly={loading}
+					/>
+				) : (
+					<SQLEditor
+						value={query}
+						onChange={setQuery}
+						onExecute={() => handleExecute()}
+						onExecuteSelection={(selection) => handleExecute(selection)}
+						dialect={dialect as "postgres" | "mysql"}
+						readOnly={loading}
+					/>
+				)}
+			</div>
+
+			{/* Results / Error */}
+			<div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden relative">
+				{error ? (
+					<div className="p-4 m-4 rounded-md bg-error/10 border border-error/20 text-error flex items-start gap-3">
+						<AlertCircle className="mt-0.5 shrink-0" size={18} />
+						<pre className="text-sm font-mono whitespace-pre-wrap break-all">
+							{error}
+						</pre>
+					</div>
+				) : result ? (
+					isMongo ? (
+                        // Use DataGrid for MongoDB too, to enable Actions
+						<div className="flex-1 overflow-hidden p-2 flex flex-col h-full">
+							<DataGrid 
+                                result={result} 
+                                sessionId={sessionId || undefined}
+                                namespace={connectionDatabase ? { database: connectionDatabase, schema: "" } : undefined}
+                                // For MongoDB, we need to extract collection name to enable Delete
+                                tableName={getCollectionFromQuery(query)}
+                                primaryKey={["_id"]}
+                                environment={environment}
+                                readOnly={readOnly}
+                                connectionName={connectionName}
+                                connectionDatabase={connectionDatabase}
+                                onRowsDeleted={runCurrentQuery}
+                                onRowClick={handleRowClick}
+                            />
+						</div>
+					) : (
+						<div className="flex-1 overflow-hidden p-2 flex flex-col h-full">
+							{/* DataGrid fills container */}
+							<DataGrid 
+                                result={result}
+                                sessionId={sessionId || undefined}
+                                connectionName={connectionName}
+                                connectionDatabase={connectionDatabase}
+                                environment={environment}
+                                readOnly={readOnly}
+                             />
+						</div>
+					)
+				) : (
+					<div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+						{t("query.noResults")}
+					</div>
+				)}
+			</div>
+
+			{/* History Modal */}
+			<QueryHistory
+				isOpen={historyOpen}
+				onClose={() => setHistoryOpen(false)}
+				onSelectQuery={setQuery}
+				sessionId={sessionId || undefined}
+			/>
+
+			<ProductionConfirmDialog
+				open={confirmOpen}
+				onOpenChange={(open) => {
+					setConfirmOpen(open);
+					if (!open) {
+						setPendingQuery(null);
+					}
+				}}
+				title={t("environment.confirmTitle")}
+				confirmationLabel={
+					(connectionDatabase || connectionName || "PROD").trim() || "PROD"
+				}
+				confirmLabel={t("common.confirm")}
+				onConfirm={handleConfirm}
+			/>
+
+			<DangerConfirmDialog
+				open={dangerConfirmOpen}
+				onOpenChange={(open) => {
+					setDangerConfirmOpen(open);
+					if (!open) {
+						setPendingQuery(null);
+						setDangerConfirmInfo(undefined);
+						setDangerConfirmLabel(undefined);
+					}
+				}}
+				title={t("environment.dangerousQueryTitle")}
+				description={t("environment.dangerousQuery")}
+				warningInfo={dangerConfirmInfo}
+				confirmationLabel={dangerConfirmLabel}
+				confirmLabel={t("common.confirm")}
+				onConfirm={handleDangerConfirm}
+			/>
+
+            <DocumentEditorModal
+                isOpen={docModalOpen}
+                onClose={() => setDocModalOpen(false)}
+                mode={docModalMode}
+                initialData={docModalData}
+                sessionId={sessionId || ''}
+                database={connectionDatabase || 'admin'} // Default to admin or context?
+                collection={getCollectionFromQuery(query)}
+                originalId={docOriginalId}
+                onSuccess={() => {
+                    handleExecute(); // Refresh data
+                }}
+                readOnly={readOnly}
+            />
+		</div>
+	);
 }
 

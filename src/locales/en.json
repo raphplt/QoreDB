@@ -328,5 +328,17 @@
         "confirmProduction": "You are in PRODUCTION. Type the table name to confirm:",
         "success": "Table \"{{name}}\" dropped successfully",
         "failed": "Failed to drop table"
+    },
+    "document": {
+        "new": "New Document",
+        "edit": "Edit Document",
+        "save": "Save",
+        "cancel": "Cancel",
+        "invalidJson": "Invalid JSON",
+        "insertSuccess": "Document inserted successfully",
+        "updateSuccess": "Document updated successfully",
+        "deleteConfirm": "Are you sure you want to delete this document?",
+        "idLabel": "Document ID (_id)",
+        "jsonLabel": "JSON Document"
     }
 }
