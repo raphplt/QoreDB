@@ -35,16 +35,17 @@ export function useConnectionActions({
         return;
       }
 
-      const config: ConnectionConfig = {
-        driver: connection.driver,
-        host: connection.host,
-        port: connection.port,
-        username: connection.username,
-        password: credsResult.password,
-        database: connection.database,
-        ssl: connection.ssl,
-        environment: connection.environment,
-      };
+    const config: ConnectionConfig = {
+					driver: connection.driver,
+					host: connection.host,
+					port: connection.port,
+					username: connection.username,
+					password: credsResult.password,
+					database: connection.database,
+					ssl: connection.ssl,
+					environment: connection.environment,
+					read_only: connection.read_only,
+				};
 
       const result = await testConnection(config);
 

@@ -55,6 +55,11 @@ interface FormData {
 	sshUsername: string;
 	sshKeyPath: string;
 	sshPassphrase: string;
+	sshHostKeyPolicy: "accept_new" | "strict" | "insecure_no_check";
+	sshProxyJump: string;
+	sshConnectTimeoutSecs: number;
+	sshKeepaliveIntervalSecs: number;
+	sshKeepaliveCountMax: number;
 }
 
 const initialFormData: FormData = {
@@ -74,6 +79,11 @@ const initialFormData: FormData = {
 	sshUsername: "",
 	sshKeyPath: "",
 	sshPassphrase: "",
+	sshHostKeyPolicy: "accept_new",
+	sshProxyJump: "",
+	sshConnectTimeoutSecs: 10,
+	sshKeepaliveIntervalSecs: 30,
+	sshKeepaliveCountMax: 3,
 };
 
 export function ConnectionModal({
@@ -97,6 +107,7 @@ export function ConnectionModal({
 	useEffect(() => {
 		if (isOpen) {
 			if (editConnection && editPassword) {
+				const sshTunnel = editConnection.ssh_tunnel;
 				setFormData({
 					name: editConnection.name,
 					driver: editConnection.driver as Driver,
@@ -108,12 +119,21 @@ export function ConnectionModal({
 					password: editPassword,
 					database: editConnection.database || "",
 					ssl: editConnection.ssl,
-					useSshTunnel: !!editConnection.ssh_tunnel,
-					sshHost: editConnection.ssh_tunnel?.host || "",
-					sshPort: editConnection.ssh_tunnel?.port || 22,
-					sshUsername: editConnection.ssh_tunnel?.username || "",
-					sshKeyPath: editConnection.ssh_tunnel?.key_path || "",
+					useSshTunnel: !!sshTunnel,
+					sshHost: sshTunnel ? sshTunnel.host : "",
+					sshPort: sshTunnel ? sshTunnel.port : 22,
+					sshUsername: sshTunnel ? sshTunnel.username : "",
+					sshKeyPath: sshTunnel ? sshTunnel.key_path || "" : "",
 					sshPassphrase: "",
+					sshHostKeyPolicy: sshTunnel
+						? (sshTunnel.host_key_policy as FormData["sshHostKeyPolicy"])
+						: "accept_new",
+					sshProxyJump: sshTunnel ? sshTunnel.proxy_jump || "" : "",
+					sshConnectTimeoutSecs: sshTunnel ? sshTunnel.connect_timeout_secs : 10,
+					sshKeepaliveIntervalSecs: sshTunnel
+						? sshTunnel.keepalive_interval_secs
+						: 30,
+					sshKeepaliveCountMax: sshTunnel ? sshTunnel.keepalive_count_max : 3,
 				});
 			} else {
 				setFormData(initialFormData);
@@ -135,7 +155,7 @@ export function ConnectionModal({
 
 	function handleChange(
 		field: keyof FormData,
-		value: string | number | boolean
+		value: string | number | boolean,
 	) {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 		setTestResult(null);
@@ -169,7 +189,12 @@ export function ConnectionModal({
 									passphrase: formData.sshPassphrase || undefined,
 								},
 							},
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			};
 
@@ -219,7 +244,12 @@ export function ConnectionModal({
 									passphrase: formData.sshPassphrase || undefined,
 								},
 							},
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			};
 
@@ -243,7 +273,12 @@ export function ConnectionModal({
 							username: formData.sshUsername,
 							auth_type: "key",
 							key_path: formData.sshKeyPath,
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			};
 
@@ -258,7 +293,12 @@ export function ConnectionModal({
 							auth_type: "key",
 							key_path: formData.sshKeyPath,
 							key_passphrase: formData.sshPassphrase || undefined,
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			});
 
@@ -315,7 +355,12 @@ export function ConnectionModal({
 							username: formData.sshUsername,
 							auth_type: "key",
 							key_path: formData.sshKeyPath,
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			};
 
@@ -330,12 +375,17 @@ export function ConnectionModal({
 							auth_type: "key",
 							key_path: formData.sshKeyPath,
 							key_passphrase: formData.sshPassphrase || undefined,
-					  }
+							host_key_policy: formData.sshHostKeyPolicy,
+							proxy_jump: formData.sshProxyJump || undefined,
+							connect_timeout_secs: formData.sshConnectTimeoutSecs,
+							keepalive_interval_secs: formData.sshKeepaliveIntervalSecs,
+							keepalive_count_max: formData.sshKeepaliveCountMax,
+						}
 					: undefined,
 			});
 
 			toast.success(
-				isEditMode ? t("connection.updateSuccess") : t("connection.saveSuccess")
+				isEditMode ? t("connection.updateSuccess") : t("connection.saveSuccess"),
 			);
 			onSaved?.(savedConnection);
 			onClose();
@@ -381,7 +431,7 @@ export function ConnectionModal({
 									"flex flex-col items-center gap-2 p-3 rounded-md border transition-all hover:bg-(--q-accent-soft)",
 									formData.driver === driver
 										? "border-accent bg-(--q-accent-soft) text-(--q-accent)"
-										: "border-border bg-background"
+										: "border-border bg-background",
 								)}
 								onClick={() => handleDriverChange(driver)}
 								disabled={isEditMode}
@@ -389,7 +439,7 @@ export function ConnectionModal({
 								<div
 									className={cn(
 										"flex items-center justify-center w-10 h-10 rounded-lg p-1.5 transition-colors",
-										formData.driver === driver ? "bg-(--q-accent-soft)" : "bg-muted"
+										formData.driver === driver ? "bg-(--q-accent-soft)" : "bg-muted",
 									)}
 								>
 									<img
@@ -434,7 +484,7 @@ export function ConnectionModal({
 													"flex-1 px-3 py-2 rounded-md text-xs font-medium border transition-all",
 													isSelected
 														? "border-transparent"
-														: "border-border bg-background hover:bg-muted"
+														: "border-border bg-background hover:bg-muted",
 												)}
 												style={
 													isSelected
@@ -442,7 +492,7 @@ export function ConnectionModal({
 																backgroundColor: config.bgSoft,
 																color: config.color,
 																borderColor: config.color,
-														  }
+															}
 														: undefined
 												}
 												onClick={() => handleChange("environment", env)}
@@ -464,7 +514,7 @@ export function ConnectionModal({
 										"w-full flex items-center justify-between px-3 py-2 rounded-md border transition-all text-sm",
 										formData.readOnly
 											? "bg-warning/10 border-warning text-warning"
-											: "border-border bg-background hover:bg-muted text-muted-foreground"
+											: "border-border bg-background hover:bg-muted text-muted-foreground",
 									)}
 									onClick={() => handleChange("readOnly", !formData.readOnly)}
 								>
@@ -474,13 +524,13 @@ export function ConnectionModal({
 									<div
 										className={cn(
 											"w-8 h-4 rounded-full transition-colors relative",
-											formData.readOnly ? "bg-warning" : "bg-muted"
+											formData.readOnly ? "bg-warning" : "bg-muted",
 										)}
 									>
 										<div
 											className={cn(
 												"absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow-sm",
-												formData.readOnly ? "left-4" : "left-0.5"
+												formData.readOnly ? "left-4" : "left-0.5",
 											)}
 										/>
 									</div>
@@ -642,6 +692,42 @@ export function ConnectionModal({
 											value={formData.sshPassphrase}
 											onChange={(e) => handleChange("sshPassphrase", e.target.value)}
 										/>
+										<p className="text-xs text-muted-foreground">
+											Passphrase: actuellement le backend OpenSSH requiert un key chargé
+											dans ssh-agent pour éviter les prompts interactifs.
+										</p>
+									</div>
+
+									<div className="grid grid-cols-2 gap-3">
+										<div className="space-y-1">
+											<label className="text-xs font-medium text-muted-foreground">
+												Host key policy
+											</label>
+											<select
+												className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+												value={formData.sshHostKeyPolicy}
+												onChange={(e) =>
+													handleChange(
+														"sshHostKeyPolicy",
+														e.target.value as FormData["sshHostKeyPolicy"],
+													)
+												}
+											>
+												<option value="accept_new">accept_new (TOFU)</option>
+												<option value="strict">strict</option>
+												<option value="insecure_no_check">insecure_no_check</option>
+											</select>
+										</div>
+										<div className="space-y-1">
+											<label className="text-xs font-medium text-muted-foreground">
+												ProxyJump (optionnel)
+											</label>
+											<Input
+												placeholder="user@bastion:22"
+												value={formData.sshProxyJump}
+												onChange={(e) => handleChange("sshProxyJump", e.target.value)}
+											/>
+										</div>
 									</div>
 								</div>
 							)}

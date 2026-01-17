@@ -51,54 +51,53 @@ function App() {
   async function handleSearchSelect(result: SearchResult) {
     setSearchOpen(false);
     
-    if (result.type === 'connection' && result.data) {
-      // Connect to the selected connection
-      const conn = result.data as SavedConnection;
-      try {
-        const credsResult = await getConnectionCredentials('default', conn.id);
-        if (!credsResult.success || !credsResult.password) {
-          toast.error(t('sidebar.failedToGetCredentials'));
-          return;
-        }
-        
-        const config: ConnectionConfig = {
-          driver: conn.driver,
-          host: conn.host,
-          port: conn.port,
-          username: conn.username,
-          password: credsResult.password,
-          database: conn.database,
-          ssl: conn.ssl,
-          read_only: conn.read_only,
-        };
-        
-        const connectResult = await connect(config);
-        if (connectResult.success && connectResult.session_id) {
-          toast.success(t('sidebar.connectedTo', { name: conn.name }));
-          handleConnected(connectResult.session_id, {
-            ...conn,
-            environment: conn.environment || 'development',
-            read_only: conn.read_only || false,
-          });
-          setSidebarRefreshTrigger(prev => prev + 1);
-        } else {
-          toast.error(t('sidebar.connectionToFailed', { name: conn.name }), {
-            description: connectResult.error,
-          });
-        }
-      } catch (err) {
-        toast.error(t('sidebar.connectError'));
-      }
-    } else if (result.type === 'query' || result.type === 'favorite') {
-      // Inject the query into the editor
-      const entry = result.data as HistoryEntry;
-      if (entry?.query) {
-        setPendingQuery(entry.query);
-        // Clear tabs to show query panel
-        setActiveTabId(null);
-        setSettingsOpen(false);
-      }
-    }
+    if (result.type === "connection" && result.data) {
+					// Connect to the selected connection
+					const conn = result.data as SavedConnection;
+					try {
+						const credsResult = await getConnectionCredentials("default", conn.id);
+						if (!credsResult.success || !credsResult.password) {
+							toast.error(t("sidebar.failedToGetCredentials"));
+							return;
+						}
+
+						const config: ConnectionConfig = {
+							driver: conn.driver,
+							host: conn.host,
+							port: conn.port,
+							username: conn.username,
+							password: credsResult.password,
+							database: conn.database,
+							ssl: conn.ssl,
+							environment: conn.environment,
+							read_only: conn.read_only,
+						};
+
+						const connectResult = await connect(config);
+						if (connectResult.success && connectResult.session_id) {
+							toast.success(t("sidebar.connectedTo", { name: conn.name }));
+							handleConnected(connectResult.session_id, {
+								...conn,
+								environment: conn.environment,
+								read_only: conn.read_only,
+							});
+							setSidebarRefreshTrigger((prev) => prev + 1);
+						} else {
+							toast.error(t("sidebar.connectionToFailed", { name: conn.name }), {
+								description: connectResult.error,
+							});
+						}
+					} catch (err) {
+						toast.error(t("sidebar.connectError"));
+					}
+				} else if (result.type === "query" || result.type === "favorite") {
+					const entry = result.data as HistoryEntry;
+					if (entry?.query) {
+						setPendingQuery(entry.query);
+						setActiveTabId(null);
+						setSettingsOpen(false);
+					}
+				}
   }
 
   // Global keyboard shortcuts

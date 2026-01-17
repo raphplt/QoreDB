@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::engine::types::{ConnectionConfig, SshTunnelConfig};
+use crate::engine::error::{EngineError, EngineResult};
 
 /// Environment classification for connections
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -33,13 +34,11 @@ pub struct SavedConnection {
     pub id: String,
     /// Display name
     pub name: String,
-    /// Driver type (postgres, mysql, mongodb)
+    /// Driver type
     pub driver: String,
     /// Environment classification (dev/staging/prod)
-    #[serde(default)]
     pub environment: Environment,
-    /// Read-only mode (blocks mutations)
-    #[serde(default)]
+    /// Read-only mode
     pub read_only: bool,
     /// Host address
     pub host: String,
@@ -67,6 +66,21 @@ pub struct SshTunnelInfo {
     pub auth_type: String,
     /// Path to private key (if key auth)
     pub key_path: Option<String>,
+
+    /// Host key policy (e.g. "accept_new", "strict", "insecure_no_check")
+    pub host_key_policy: String,
+
+    /// Optional jump host/bastion (e.g. "user@bastion:22")
+    pub proxy_jump: Option<String>,
+
+    /// Connection timeout in seconds for the SSH TCP handshake.
+    pub connect_timeout_secs: u32,
+
+    /// SSH keepalive interval in seconds.
+    pub keepalive_interval_secs: u32,
+
+    /// Max number of keepalive failures before disconnect.
+    pub keepalive_count_max: u32,
 }
 
 /// Credentials stored in the vault (never serialized to frontend)
@@ -79,30 +93,59 @@ pub struct StoredCredentials {
 
 impl SavedConnection {
     /// Converts to a ConnectionConfig for connecting
-    pub fn to_connection_config(&self, creds: &StoredCredentials) -> ConnectionConfig {
-        let ssh_tunnel = self.ssh_tunnel.as_ref().map(|ssh| {
+    pub fn to_connection_config(&self, creds: &StoredCredentials) -> EngineResult<ConnectionConfig> {
+        let ssh_tunnel = match self.ssh_tunnel.as_ref() {
+            Some(ssh) => {
             use crate::engine::types::SshAuth;
+            use crate::engine::types::SshHostKeyPolicy;
             
             let auth = if ssh.auth_type == "key" {
                 SshAuth::Key {
-                    private_key_path: ssh.key_path.clone().unwrap_or_default(),
+                    private_key_path: ssh
+                        .key_path
+                        .clone()
+                        .expect("key_path must be set when auth_type is 'key'"),
                     passphrase: creds.ssh_key_passphrase.clone(),
                 }
             } else {
                 SshAuth::Password {
-                    password: creds.ssh_password.clone().unwrap_or_default(),
+                    password: creds
+                        .ssh_password
+                        .clone()
+                        .ok_or_else(|| EngineError::internal("ssh_password is missing"))?,
                 }
             };
 
-            SshTunnelConfig {
+            let host_key_policy = match ssh.host_key_policy.as_str() {
+                "accept_new" => SshHostKeyPolicy::AcceptNew,
+                "strict" => SshHostKeyPolicy::Strict,
+                "insecure_no_check" => SshHostKeyPolicy::InsecureNoCheck,
+                other => {
+                    return Err(EngineError::internal(format!(
+                        "Invalid ssh host_key_policy: {}",
+                        other
+                    )))
+                }
+            };
+
+            Some(SshTunnelConfig {
                 host: ssh.host.clone(),
                 port: ssh.port,
                 username: ssh.username.clone(),
                 auth,
-            }
-        });
 
-        ConnectionConfig {
+                host_key_policy,
+                known_hosts_path: None,
+                proxy_jump: ssh.proxy_jump.clone(),
+                connect_timeout_secs: ssh.connect_timeout_secs,
+                keepalive_interval_secs: ssh.keepalive_interval_secs,
+                keepalive_count_max: ssh.keepalive_count_max,
+            })
+            }
+            None => None,
+        };
+
+        Ok(ConnectionConfig {
             driver: self.driver.clone(),
             host: self.host.clone(),
             port: self.port,
@@ -110,9 +153,9 @@ impl SavedConnection {
             password: creds.db_password.clone(),
             database: self.database.clone(),
             ssl: self.ssl,
-            environment: Some(self.environment.as_str().to_string()),
+            environment: self.environment.as_str().to_string(),
             read_only: self.read_only,
             ssh_tunnel,
-        }
+        })
     }
 }

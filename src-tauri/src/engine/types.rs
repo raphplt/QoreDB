@@ -33,9 +33,7 @@ pub struct ConnectionConfig {
     pub password: String,
     pub database: Option<String>,
     pub ssl: bool,
-    #[serde(default)]
-    pub environment: Option<String>,
-    #[serde(default)]
+    pub environment: String,
     pub read_only: bool,
     pub ssh_tunnel: Option<SshTunnelConfig>,
 }
@@ -47,14 +45,66 @@ pub struct SshTunnelConfig {
     pub port: u16,
     pub username: String,
     pub auth: SshAuth,
+
+    /// Host key verification policy (security-critical).
+    pub host_key_policy: SshHostKeyPolicy,
+
+    /// Optional path to an app-owned known_hosts file.
+    /// If not provided, a per-user default is used.
+    pub known_hosts_path: Option<String>,
+
+    /// Optional SSH jump host/bastion, formatted like `user@host:port`.
+    pub proxy_jump: Option<String>,
+
+    /// Connection timeout in seconds for the SSH TCP handshake.
+    pub connect_timeout_secs: u32,
+
+    /// SSH keepalive interval in seconds.
+    pub keepalive_interval_secs: u32,
+
+    /// Max number of keepalive failures before disconnect.
+    pub keepalive_count_max: u32,
+}
+
+/// Host key verification policy for SSH.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SshHostKeyPolicy {
+    /// Trust on first use: auto-add new hosts to an app-owned known_hosts file.
+    AcceptNew,
+    /// Strict: require the host key to already be present in known_hosts.
+    Strict,
+    /// Insecure: disable host key checking (dev-only).
+    InsecureNoCheck,
 }
 
 /// SSH authentication method
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
 pub enum SshAuth {
     Password { password: String },
     Key { private_key_path: String, passphrase: Option<String> },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ssh_auth_deserializes_from_ts_style_externally_tagged_enum() {
+        let json = r#"{"Key":{"private_key_path":"/tmp/id_ed25519","passphrase":"p"}}"#;
+        let auth: SshAuth = serde_json::from_str(json).expect("should parse");
+
+        match auth {
+            SshAuth::Key {
+                private_key_path,
+                passphrase,
+            } => {
+                assert_eq!(private_key_path, "/tmp/id_ed25519");
+                assert_eq!(passphrase.as_deref(), Some("p"));
+            }
+            other => panic!("unexpected auth variant: {other:?}"),
+        }
+    }
 }
 
 /// Namespace represents the hierarchy level above collections

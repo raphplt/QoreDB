@@ -188,10 +188,7 @@ impl SessionManager {
             .get(&session_id)
             .ok_or_else(|| EngineError::session_not_found(session_id.0.to_string()))?;
 
-        Ok(matches!(
-            session.config.environment.as_deref(),
-            Some("production")
-        ))
+        Ok(session.config.environment == "production")
     }
 
     /// Checks if a session exists

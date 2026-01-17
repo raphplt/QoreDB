@@ -87,10 +87,10 @@ export function Sidebar({
       if (result.success && result.session_id) {
         toast.success(t('sidebar.connectedTo', { name: conn.name }));
         onConnected(result.session_id, {
-          ...conn,
-          environment: conn.environment || 'development',
-          read_only: conn.read_only || false,
-        });
+									...conn,
+									environment: conn.environment,
+									read_only: conn.read_only,
+								});
         setExpandedId(conn.id);
       } else {
         toast.error(t('sidebar.connectionToFailed', { name: conn.name }), {

@@ -1,4 +1,18 @@
 services:
+  ssh-bastion:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: qoredb-ssh-bastion
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - USER_NAME=qoredb
+      - PUBLIC_KEY_FILE=/config/ssh/authorized_keys
+    ports:
+      - "2222:2222"
+    volumes:
+      - ./dev/ssh:/config/ssh:ro
+
   postgres:
     image: postgres:16-alpine
     container_name: qoredb-postgres

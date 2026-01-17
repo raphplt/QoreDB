@@ -29,9 +29,7 @@ pub struct SaveConnectionInput {
     pub id: String,
     pub name: String,
     pub driver: String,
-    #[serde(default)]
     pub environment: Environment,
-    #[serde(default)]
     pub read_only: bool,
     pub host: String,
     pub port: u16,
@@ -52,6 +50,14 @@ pub struct SshTunnelInput {
     pub password: Option<String>,
     pub key_path: Option<String>,
     pub key_passphrase: Option<String>,
+
+    pub host_key_policy: String,
+
+    pub proxy_jump: Option<String>,
+
+    pub connect_timeout_secs: u32,
+    pub keepalive_interval_secs: u32,
+    pub keepalive_count_max: u32,
 }
 
 /// Checks the vault lock status
@@ -149,6 +155,11 @@ pub async fn save_connection(
         username: ssh.username.clone(),
         auth_type: ssh.auth_type.clone(),
         key_path: ssh.key_path.clone(),
+        host_key_policy: ssh.host_key_policy.clone(),
+        proxy_jump: ssh.proxy_jump.clone(),
+        connect_timeout_secs: ssh.connect_timeout_secs,
+        keepalive_interval_secs: ssh.keepalive_interval_secs,
+        keepalive_count_max: ssh.keepalive_count_max,
     });
 
     let connection = SavedConnection {

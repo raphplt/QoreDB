@@ -202,7 +202,9 @@
         "downloadToFile": "Download to file",
         "searchPlaceholder": "Search...",
         "columns": "Columns",
-        "toggleColumns": "Toggle columns"
+        "toggleColumns": "Toggle columns",
+        "toggleFilters": "Show/Hide Filters",
+        "filterPlaceholder": "Filter..."
     },
     "rowModal": {
         "insertTitle": "Insert New Row",

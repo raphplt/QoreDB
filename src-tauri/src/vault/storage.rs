@@ -150,7 +150,12 @@ impl VaultStorage {
 
         match entry.get_password() {
             Ok(list_json) => {
-                let list: Vec<String> = serde_json::from_str(&list_json).unwrap_or_default();
+                let list: Vec<String> = serde_json::from_str(&list_json).map_err(|e| {
+                    EngineError::internal(format!(
+                        "Invalid connection list JSON in keyring: {}",
+                        e
+                    ))
+                })?;
                 Ok(list)
             }
             Err(keyring::Error::NoEntry) => Ok(Vec::new()),
