@@ -9,7 +9,7 @@ Goal: raise architecture/extensibility, reliability, security, observability, an
 - [x] Validate all connection inputs server-side (driver, host, port, ssl, env) and normalize `environment` to a strict enum.
 - [x] Add a backend policy file (or config) for production safety rules; do not trust UI flags.
 - [x] Expose production safety policy in Settings with persisted config; env vars override if set.
-- [ ] Ensure secrets never reach logs: use a `SecretString`-style wrapper and redact query text where needed.
+- [x] Ensure secrets never reach logs: use a `SecretString`-style wrapper and redact query text where needed.
 
 ## 2) Query Cancellation + Timeouts (Reliability + Scalability)
 

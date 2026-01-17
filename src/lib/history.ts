@@ -5,7 +5,7 @@
  */
 
 import { shouldStoreHistory } from './diagnosticsSettings';
-import { redactQuery } from './redaction';
+import { redactQuery, redactText } from './redaction';
 
 export interface HistoryEntry {
   id: string;
@@ -56,6 +56,7 @@ export function addToHistory(entry: Omit<HistoryEntry, 'id'>): HistoryEntry {
     ...entry,
     id: generateId(),
     query: shouldStoreHistory() ? redactQuery(entry.query) : entry.query,
+    error: entry.error ? redactText(entry.error) : undefined,
   };
   
   // Add to beginning
