@@ -5,6 +5,7 @@ pub mod drivers;
 pub mod error;
 pub mod query_manager;
 pub mod registry;
+pub mod sql_safety;
 pub mod session_manager;
 pub mod ssh_tunnel;
 pub mod traits;

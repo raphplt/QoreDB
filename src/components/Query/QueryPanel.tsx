@@ -15,6 +15,7 @@ import { Driver } from '../../lib/drivers';
 import { ProductionConfirmDialog } from '../Guard/ProductionConfirmDialog';
 import { DangerConfirmDialog } from '../Guard/DangerConfirmDialog';
 import { toast } from 'sonner';
+import { forceRefreshCache } from '../../hooks/useSchemaCache';
 
 interface QueryPanelProps {
 	sessionId: string | null;
@@ -24,6 +25,7 @@ interface QueryPanelProps {
 	connectionName?: string;
 	connectionDatabase?: string;
 	initialQuery?: string;
+	onSchemaChange?: () => void;
 }
 
 export function QueryPanel({
@@ -34,6 +36,7 @@ export function QueryPanel({
 	connectionName,
 	connectionDatabase,
 	initialQuery,
+	onSchemaChange,
 }: QueryPanelProps) {
 	const { t } = useTranslation();
 	const isMongo = dialect === "mongodb";
@@ -69,6 +72,26 @@ export function QueryPanel({
   }, [initialQuery]);
 
   const envConfig = ENVIRONMENT_CONFIG[environment];
+
+  const shouldRefreshSchema = useCallback(
+    (queryToCheck: string) => {
+      if (!queryToCheck.trim()) return false;
+      if (isMongo) {
+        return (
+          /\.createCollection\s*\(/i.test(queryToCheck) ||
+          /\.dropDatabase\s*\(/i.test(queryToCheck) ||
+          /\.drop\s*\(/i.test(queryToCheck) ||
+          /\.renameCollection\s*\(/i.test(queryToCheck) ||
+          /"operation"\s*:\s*"(create_collection|drop_collection|drop_database|rename_collection)"/i.test(
+            queryToCheck
+          )
+        );
+      }
+
+      return /\b(CREATE|DROP|ALTER|TRUNCATE|RENAME)\b/i.test(queryToCheck);
+    },
+    [isMongo]
+  );
 
   const runQuery = useCallback(
     async (queryToRun: string, acknowledgedDangerous = false) => {
@@ -110,6 +133,11 @@ export function QueryPanel({
             totalTimeMs: totalTime,
             rowCount: response.result.rows.length,
           });
+
+          if (shouldRefreshSchema(queryToRun)) {
+            forceRefreshCache(sessionId);
+            onSchemaChange?.();
+          }
         } else {
           setError(response.error || t('query.queryFailed'));
           addToHistory({
@@ -132,7 +160,7 @@ export function QueryPanel({
         setActiveQueryId(null);
       }
     },
-    [sessionId, dialect, t]
+    [sessionId, dialect, t, onSchemaChange, shouldRefreshSchema]
   );
 
   const handleExecute = useCallback(

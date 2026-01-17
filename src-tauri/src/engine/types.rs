@@ -101,6 +101,15 @@ pub enum SshAuth {
     Key { private_key_path: String, passphrase: Option<String> },
 }
 
+/// Query cancellation support level for a driver.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CancelSupport {
+    None,
+    BestEffort,
+    Driver,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

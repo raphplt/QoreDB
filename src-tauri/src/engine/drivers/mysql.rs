@@ -21,8 +21,8 @@ use tokio::sync::{Mutex, RwLock};
 use crate::engine::error::{EngineError, EngineResult};
 use crate::engine::traits::DataEngine;
 use crate::engine::types::{
-    Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryId, QueryResult,
-    Row as QRow, RowData, SessionId, TableColumn, TableSchema, Value,
+    CancelSupport, Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryId,
+    QueryResult, Row as QRow, RowData, SessionId, TableColumn, TableSchema, Value,
 };
 
 /// Holds the connection state for a MySQL session.
@@ -611,6 +611,10 @@ impl DataEngine for MySqlDriver {
         }
 
         Ok(())
+    }
+
+    fn cancel_support(&self) -> CancelSupport {
+        CancelSupport::Driver
     }
 
     // ==================== Transaction Methods ====================

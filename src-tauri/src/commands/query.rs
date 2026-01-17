@@ -8,36 +8,16 @@ use uuid::Uuid;
 use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
-use crate::engine::{TableSchema, types::{Collection, Namespace, QueryId, QueryResult, SessionId}};
+use crate::engine::{
+    sql_safety,
+    TableSchema,
+    types::{Collection, Namespace, QueryId, QueryResult, SessionId},
+};
 
 const READ_ONLY_BLOCKED: &str = "Operation blocked: read-only mode";
 const DANGEROUS_BLOCKED: &str = "Dangerous query blocked: confirmation required";
 const DANGEROUS_BLOCKED_POLICY: &str = "Dangerous query blocked by policy";
-
-fn is_sql_mutation(query: &str) -> bool {
-    const MUTATION_KEYWORDS: [&str; 15] = [
-        "INSERT",
-        "UPDATE",
-        "DELETE",
-        "DROP",
-        "TRUNCATE",
-        "ALTER",
-        "CREATE",
-        "REPLACE",
-        "MERGE",
-        "GRANT",
-        "REVOKE",
-        "CALL",
-        "EXEC",
-        "EXECUTE",
-        "COPY",
-    ];
-
-    let normalized = query.to_ascii_uppercase();
-    normalized
-        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-        .any(|token| MUTATION_KEYWORDS.contains(&token))
-}
+const SQL_PARSE_BLOCKED: &str = "Operation blocked: SQL parser could not classify the query";
 
 fn is_mongo_mutation(query: &str) -> bool {
     let normalized = query.to_ascii_lowercase();
@@ -75,97 +55,6 @@ fn is_mongo_mutation(query: &str) -> bool {
     ];
 
     json_patterns.iter().any(|pattern| compact.contains(pattern))
-}
-
-fn is_mutation_query(driver_id: &str, query: &str) -> bool {
-    if driver_id.eq_ignore_ascii_case("mongodb") {
-        is_mongo_mutation(query)
-    } else {
-        is_sql_mutation(query)
-    }
-}
-
-fn strip_sql_comments(sql: &str) -> String {
-    let mut out = String::with_capacity(sql.len());
-    let mut chars = sql.chars().peekable();
-    let mut in_single = false;
-
-    while let Some(c) = chars.next() {
-        if c == '\'' {
-            in_single = !in_single;
-            out.push(c);
-            continue;
-        }
-
-        if !in_single {
-            if c == '-' && chars.peek() == Some(&'-') {
-                while let Some(next) = chars.next() {
-                    if next == '\n' {
-                        out.push('\n');
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            if c == '/' && chars.peek() == Some(&'*') {
-                chars.next();
-                while let Some(next) = chars.next() {
-                    if next == '*' && chars.peek() == Some(&'/') {
-                        chars.next();
-                        break;
-                    }
-                }
-                continue;
-            }
-        }
-
-        out.push(c);
-    }
-
-    out
-}
-
-fn split_sql_statements(sql: &str) -> Vec<String> {
-    strip_sql_comments(sql)
-        .split(';')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect()
-}
-
-fn is_dangerous_sql(sql: &str) -> bool {
-    for statement in split_sql_statements(sql) {
-        let upper = statement.to_ascii_uppercase();
-        let trimmed = upper.trim_start();
-
-        if trimmed.starts_with("DROP TABLE")
-            || trimmed.starts_with("DROP DATABASE")
-            || trimmed.starts_with("DROP SCHEMA")
-            || trimmed.starts_with("DROP INDEX")
-            || trimmed.starts_with("DROP VIEW")
-            || trimmed.starts_with("DROP FUNCTION")
-            || trimmed.starts_with("DROP TRIGGER")
-            || trimmed.starts_with("TRUNCATE")
-            || trimmed.starts_with("DROP ALL")
-        {
-            return true;
-        }
-
-        if trimmed.starts_with("DELETE FROM") && !trimmed.contains(" WHERE ") {
-            return true;
-        }
-
-        if trimmed.starts_with("UPDATE") && !trimmed.contains(" WHERE ") {
-            return true;
-        }
-
-        if trimmed.starts_with("ALTER TABLE") && trimmed.contains(" DROP ") {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Response wrapper for query results
@@ -243,15 +132,6 @@ pub async fn execute_query(
         }
     };
 
-    if read_only && is_mutation_query(driver.driver_id(), &query) {
-        return Ok(QueryResponse {
-            success: false,
-            result: None,
-            error: Some(READ_ONLY_BLOCKED.to_string()),
-            query_id: None,
-        });
-    }
-
     let is_production = match session_manager.is_production(session).await {
         Ok(value) => value,
         Err(_) => false,
@@ -259,24 +139,98 @@ pub async fn execute_query(
 
     let acknowledged = acknowledged_dangerous.unwrap_or(false);
     let is_sql_driver = !driver.driver_id().eq_ignore_ascii_case("mongodb");
-    let is_dangerous = is_sql_driver && is_dangerous_sql(&query);
-    if is_production && is_dangerous {
-        if policy.prod_block_dangerous_sql {
+    let sql_analysis = if is_sql_driver {
+        match sql_safety::analyze_sql(driver.driver_id(), &query) {
+            Ok(analysis) => Some(analysis),
+            Err(err) => {
+                if read_only {
+                    return Ok(QueryResponse {
+                        success: false,
+                        result: None,
+                        error: Some(format!("{SQL_PARSE_BLOCKED}: {err}")),
+                        query_id: None,
+                    });
+                }
+
+                if is_production {
+                    if policy.prod_block_dangerous_sql {
+                        return Ok(QueryResponse {
+                            success: false,
+                            result: None,
+                            error: Some(format!(
+                                "{DANGEROUS_BLOCKED_POLICY}: SQL parse error: {err}"
+                            )),
+                            query_id: None,
+                        });
+                    }
+
+                    if policy.prod_require_confirmation && !acknowledged {
+                        return Ok(QueryResponse {
+                            success: false,
+                            result: None,
+                            error: Some(format!(
+                                "{DANGEROUS_BLOCKED}: SQL parse error: {err}"
+                            )),
+                            query_id: None,
+                        });
+                    }
+                }
+
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    if read_only {
+        let is_mutation = if is_sql_driver {
+            sql_analysis
+                .as_ref()
+                .map(|analysis| analysis.is_mutation)
+                .unwrap_or(false)
+        } else {
+            is_mongo_mutation(&query)
+        };
+
+        if is_mutation {
             return Ok(QueryResponse {
                 success: false,
                 result: None,
-                error: Some(DANGEROUS_BLOCKED_POLICY.to_string()),
+                error: Some(READ_ONLY_BLOCKED.to_string()),
                 query_id: None,
             });
         }
+    }
 
-        if policy.prod_require_confirmation && !acknowledged {
-            return Ok(QueryResponse {
-                success: false,
-                result: None,
-                error: Some(DANGEROUS_BLOCKED.to_string()),
-                query_id: None,
-            });
+    if is_production {
+        let is_dangerous = if is_sql_driver {
+            sql_analysis
+                .as_ref()
+                .map(|analysis| analysis.is_dangerous)
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
+        if is_dangerous {
+            if policy.prod_block_dangerous_sql {
+                return Ok(QueryResponse {
+                    success: false,
+                    result: None,
+                    error: Some(DANGEROUS_BLOCKED_POLICY.to_string()),
+                    query_id: None,
+                });
+            }
+
+            if policy.prod_require_confirmation && !acknowledged {
+                return Ok(QueryResponse {
+                    success: false,
+                    result: None,
+                    error: Some(DANGEROUS_BLOCKED.to_string()),
+                    query_id: None,
+                });
+            }
         }
     }
 

@@ -285,6 +285,7 @@ function App() {
                   connectionName={activeConnection?.name}
                   connectionDatabase={activeConnection?.database}
                   initialQuery={pendingQuery}
+                  onSchemaChange={triggerSchemaRefresh}
                 />
               )
             ) : (

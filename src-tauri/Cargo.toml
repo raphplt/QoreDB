@@ -35,6 +35,7 @@ thiserror = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 base64 = "0.22"
 futures = "0.3"
+sqlparser = "0.60"
 
 # Note: SSH tunneling uses native OpenSSH command (ssh -L), no external crate needed
 

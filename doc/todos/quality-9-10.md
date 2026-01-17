@@ -19,15 +19,15 @@ Goal: raise architecture/extensibility, reliability, security, observability, an
 - [x] Postgres: capture backend PID (`SELECT pg_backend_pid()`) on the executing connection; cancel from a separate pool connection with `SELECT pg_cancel_backend(pid)`.
 - [x] MySQL: capture connection ID (`SELECT CONNECTION_ID()`) on the executing connection; cancel with `KILL QUERY <id>` (fallback to `KILL CONNECTION` if needed).
 - [x] MongoDB: best-effort cancel via task abort + dropping cursor/session; document limitations.
-- [ ] Add driver capability flags for cancel support (real vs best-effort).
+- [x] Add driver capability flags for cancel support (real vs best-effort).
 - [x] On timeout, trigger driver cancel + clean up in `QueryManager`.
 
 ## 3) SQL Safety + Read-Only Enforcement (Security)
 
-- [ ] Replace keyword heuristics with a SQL parser (e.g., `sqlparser`) and a normalized AST-based classifier.
-- [ ] Correctly classify CTEs (`WITH ... SELECT`) and multi-statement scripts.
-- [ ] Add production "dangerous" rules to the parser (DROP/ALTER/TRUNCATE/UPDATE-DELETE without WHERE, etc.).
-- [ ] Add unit tests for the parser with a table of safe/unsafe queries across Postgres/MySQL dialects.
+- [x] Replace keyword heuristics with a SQL parser (e.g., `sqlparser`) and a normalized AST-based classifier.
+- [x] Correctly classify CTEs (`WITH ... SELECT`) and multi-statement scripts.
+- [x] Add production "dangerous" rules to the parser (DROP/ALTER/TRUNCATE/UPDATE-DELETE without WHERE, etc.).
+- [x] Add unit tests for the parser with a table of safe/unsafe queries across Postgres/MySQL dialects.
 
 ## 4) SSH Password Auth Support (Security + UX)
 

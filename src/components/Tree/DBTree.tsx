@@ -42,22 +42,50 @@ export function DBTree({
 
   const sessionId = connectionId;
 
-  useEffect(() => {
-    loadNamespaces();
-  }, [connectionId]);
-
-  useEffect(() => {
-    refreshExpandedNamespace();
-  }, [refreshTrigger]);
-
   const loadNamespaces = useCallback(async () => {
     try {
       const ns = await schemaCache.getNamespaces();
       setNamespaces(ns);
+      return ns;
     } catch (err) {
       console.error('Failed to load namespaces:', err);
     }
+    return [];
   }, [schemaCache]);
+
+  const refreshCollections = useCallback(async (ns: Namespace) => {
+    try {
+      const cols = await schemaCache.getCollections(ns);
+      setCollections(cols);
+    } catch (err) {
+      console.error('Failed to refresh collections:', err);
+    }
+  }, [schemaCache]);
+
+  const refreshExpandedNamespace = useCallback(async () => {
+    if (!expandedNs) return;
+    const [database, schema] = expandedNs.split(':');
+    await refreshCollections({ database, schema: schema || undefined });
+  }, [expandedNs, refreshCollections]);
+
+  useEffect(() => {
+    loadNamespaces();
+  }, [connectionId, loadNamespaces]);
+
+  useEffect(() => {
+    if (refreshTrigger === undefined) return;
+    const refresh = async () => {
+      schemaCache.invalidateNamespaces();
+      const updated = await loadNamespaces();
+      if (expandedNs && !updated.some(ns => getNsKey(ns) === expandedNs)) {
+        setExpandedNs(null);
+        setCollections([]);
+        return;
+      }
+      await refreshExpandedNamespace();
+    };
+    refresh();
+  }, [refreshTrigger, schemaCache, loadNamespaces, refreshExpandedNamespace, expandedNs]);
 
   async function handleExpandNamespace(ns: Namespace) {
     const key = `${ns.database}:${ns.schema || ''}`;
@@ -70,21 +98,6 @@ export function DBTree({
 
     setExpandedNs(key);
     await refreshCollections(ns);
-  }
-
-  const refreshCollections = useCallback(async (ns: Namespace) => {
-    try {
-      const cols = await schemaCache.getCollections(ns);
-      setCollections(cols);
-    } catch (err) {
-      console.error('Failed to refresh collections:', err);
-    }
-  }, [schemaCache]);
-
-  async function refreshExpandedNamespace() {
-    if (!expandedNs) return;
-    const [database, schema] = expandedNs.split(':');
-    await refreshCollections({ database, schema: schema || undefined });
   }
 
   async function openNamespace(ns: Namespace) {
@@ -243,4 +256,3 @@ export function DBTree({
     </div>
   );
 }
-

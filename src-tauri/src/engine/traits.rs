@@ -8,7 +8,8 @@ use async_trait::async_trait;
 
 use crate::engine::error::EngineResult;
 use crate::engine::types::{
-    Collection, ConnectionConfig, Namespace, QueryId, QueryResult, RowData, SessionId, TableSchema,
+    CancelSupport, Collection, ConnectionConfig, Namespace, QueryId, QueryResult, RowData,
+    SessionId, TableSchema,
 };
 
 /// Core trait that all database drivers must implement
@@ -83,6 +84,11 @@ pub trait DataEngine: Send + Sync {
         Err(crate::engine::error::EngineError::not_supported(
             "Query cancellation is not supported by this driver"
         ))
+    }
+
+    /// Reports cancellation support level for this driver.
+    fn cancel_support(&self) -> CancelSupport {
+        CancelSupport::None
     }
 
     // ==================== Transaction Methods ====================
