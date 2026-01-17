@@ -3,6 +3,7 @@
 
 pub mod commands;
 pub mod engine;
+pub mod observability;
 pub mod policy;
 pub mod vault;
 
@@ -59,6 +60,7 @@ impl Default for AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    observability::init_tracing();
     let state: SharedState = Arc::new(Mutex::new(AppState::new()));
 
     tauri::Builder::default()

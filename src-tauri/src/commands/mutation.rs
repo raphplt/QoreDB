@@ -6,6 +6,7 @@ use serde::Serialize;
 use tauri::State;
 use uuid::Uuid;
 use std::sync::Arc;
+use tracing::instrument;
 
 use crate::engine::{types::{Namespace, QueryResult, RowData, SessionId}};
 
@@ -28,6 +29,10 @@ fn parse_session_id(id: &str) -> Result<SessionId, String> {
 
 /// Inserts a row into a table
 #[tauri::command]
+#[instrument(
+    skip(state, data),
+    fields(session_id = %session_id, database = %database, schema = ?schema, table = %table)
+)]
 pub async fn insert_row(
     state: State<'_, crate::SharedState>,
     session_id: String,
@@ -90,6 +95,10 @@ pub async fn insert_row(
 
 /// Updates a row in a table
 #[tauri::command]
+#[instrument(
+    skip(state, primary_key, data),
+    fields(session_id = %session_id, database = %database, schema = ?schema, table = %table)
+)]
 pub async fn update_row(
     state: State<'_, crate::SharedState>,
     session_id: String,
@@ -153,6 +162,10 @@ pub async fn update_row(
 
 /// Deletes a row from a table
 #[tauri::command]
+#[instrument(
+    skip(state, primary_key),
+    fields(session_id = %session_id, database = %database, schema = ?schema, table = %table)
+)]
 pub async fn delete_row(
     state: State<'_, crate::SharedState>,
     session_id: String,

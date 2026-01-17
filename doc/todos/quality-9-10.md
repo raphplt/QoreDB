@@ -31,8 +31,6 @@ Goal: raise architecture/extensibility, reliability, security, observability, an
 
 ## 4) SSH Password Auth Support (Security + UX)
 
-Avant toute chose sur ce point il faut bien regarder tout ce qui a déjà été fait coté SSH.
-
 - [x] Add a pluggable SSH tunnel backend (`SshTunnelBackend` trait).
 - [ ] Keep OpenSSH backend for key-based auth; add an embedded backend (libssh2/ssh2 crate) for password auth.
 - [ ] Support host key policy and known_hosts handling in the embedded backend.
@@ -41,9 +39,10 @@ Avant toute chose sur ce point il faut bien regarder tout ce qui a déjà été 
 
 ## 5) Observability (Operability)
 
-- [ ] Add structured logging with `tracing` (per request + per query + per connection).
-- [ ] Persist logs to file with rotation, and add a UI command to export logs for support.
-- [ ] Add correlation IDs (session_id, query_id) to logs without leaking secrets.
+- [x] Add structured logging with `tracing` (per request + per query + per connection).
+- [x] Persist logs to file with rotation.
+- [ ] Add a UI command to export logs for support.
+- [x] Add correlation IDs (session_id, query_id) to logs without leaking secrets.
 - [ ] Track query durations and cancellations, expose basic metrics in dev builds.
 
 ## 6) Tests + CI (Quality & Maintenance)

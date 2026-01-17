@@ -7,6 +7,7 @@ use tauri::State;
 use uuid::Uuid;
 use std::sync::Arc;
 use tokio::time::{timeout, Duration};
+use tracing::{field, instrument};
 
 use crate::engine::{
     sql_safety,
@@ -91,6 +92,15 @@ fn parse_session_id(id: &str) -> Result<SessionId, String> {
 
 /// Executes a query on the given session
 #[tauri::command]
+#[instrument(
+    skip(state, query),
+    fields(
+        session_id = %session_id,
+        query_id = ?query_id,
+        query_len = query.len(),
+        driver = field::Empty
+    )
+)]
 pub async fn execute_query(
     state: State<'_, crate::SharedState>,
     session_id: String,
@@ -132,6 +142,7 @@ pub async fn execute_query(
             });
         }
     };
+    tracing::Span::current().record("driver", &field::display(driver.driver_id()));
 
     let is_production = match session_manager.is_production(session).await {
         Ok(value) => value,
@@ -295,6 +306,10 @@ pub async fn execute_query(
 
 /// Cancels a running query
 #[tauri::command]
+#[instrument(
+    skip(state),
+    fields(session_id = %session_id, query_id = ?query_id, driver = field::Empty)
+)]
 pub async fn cancel_query(
     state: State<'_, crate::SharedState>,
     session_id: String,
@@ -317,6 +332,7 @@ pub async fn cancel_query(
             });
         }
     };
+    tracing::Span::current().record("driver", &field::display(driver.driver_id()));
 
     let query_id = if let Some(raw) = query_id {
         let parsed = Uuid::parse_str(&raw).map_err(|e| format!("Invalid query ID: {}", e))?;

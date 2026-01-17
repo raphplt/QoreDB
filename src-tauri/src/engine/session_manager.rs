@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 use tokio::time::{timeout, Duration};
+use tracing::instrument;
 
 use crate::engine::error::{EngineError, EngineResult};
 use crate::engine::ssh_tunnel::SshTunnel;
@@ -41,6 +42,16 @@ impl SessionManager {
     }
 
     /// Tests a connection without persisting it
+    #[instrument(
+        skip(self, config),
+        fields(
+            driver = %config.driver,
+            host = %config.host,
+            port = config.port,
+            database = ?config.database,
+            ssh = config.ssh_tunnel.is_some()
+        )
+    )]
     pub async fn test_connection(&self, config: &ConnectionConfig) -> EngineResult<()> {
         let driver = self
             .registry
@@ -70,6 +81,16 @@ impl SessionManager {
     }
 
     /// Establishes a new connection and returns its session ID
+    #[instrument(
+        skip(self, config),
+        fields(
+            driver = %config.driver,
+            host = %config.host,
+            port = config.port,
+            database = ?config.database,
+            ssh = config.ssh_tunnel.is_some()
+        )
+    )]
     pub async fn connect(&self, config: ConnectionConfig) -> EngineResult<SessionId> {
         let driver = self
             .registry
@@ -120,6 +141,7 @@ impl SessionManager {
     }
 
     /// Disconnects a session
+    #[instrument(skip(self), fields(session_id = %session_id.0))]
     pub async fn disconnect(&self, session_id: SessionId) -> EngineResult<()> {
         let mut session = {
             let mut sessions = self.sessions.write().await;

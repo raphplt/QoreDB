@@ -6,6 +6,7 @@ use serde::Serialize;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+use tracing::instrument;
 
 use crate::engine::types::{ConnectionConfig, SshAuth};
 use crate::vault::VaultStorage;
@@ -129,6 +130,16 @@ fn normalize_config(mut config: ConnectionConfig) -> Result<ConnectionConfig, St
 
 /// Tests a database connection without persisting it
 #[tauri::command]
+#[instrument(
+    skip(state, config),
+    fields(
+        driver = %config.driver,
+        host = %config.host,
+        port = config.port,
+        database = ?config.database,
+        ssh = config.ssh_tunnel.is_some()
+    )
+)]
 pub async fn test_connection(
     state: State<'_, crate::SharedState>,
     config: ConnectionConfig,
@@ -165,6 +176,7 @@ pub async fn test_connection(
 
 /// Tests a saved connection using vault metadata + credentials
 #[tauri::command]
+#[instrument(skip(state), fields(project_id = %project_id, connection_id = %connection_id))]
 pub async fn test_saved_connection(
     state: State<'_, crate::SharedState>,
     project_id: String,
@@ -211,6 +223,16 @@ pub async fn test_saved_connection(
 
 /// Establishes a new database connection
 #[tauri::command]
+#[instrument(
+    skip(state, config),
+    fields(
+        driver = %config.driver,
+        host = %config.host,
+        port = config.port,
+        database = ?config.database,
+        ssh = config.ssh_tunnel.is_some()
+    )
+)]
 pub async fn connect(
     state: State<'_, crate::SharedState>,
     config: ConnectionConfig,
@@ -255,6 +277,7 @@ pub async fn connect(
 
 /// Establishes a new database connection from a saved connection
 #[tauri::command]
+#[instrument(skip(state), fields(project_id = %project_id, connection_id = %connection_id))]
 pub async fn connect_saved_connection(
     state: State<'_, crate::SharedState>,
     project_id: String,
@@ -301,6 +324,7 @@ pub async fn connect_saved_connection(
 
 /// Disconnects an active session
 #[tauri::command]
+#[instrument(skip(state), fields(session_id = %session_id))]
 pub async fn disconnect(
     state: State<'_, crate::SharedState>,
     session_id: String,

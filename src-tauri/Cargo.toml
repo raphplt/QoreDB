@@ -36,6 +36,9 @@ uuid = { version = "1", features = ["v4", "serde"] }
 base64 = "0.22"
 futures = "0.3"
 sqlparser = "0.60"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Note: SSH tunneling uses native OpenSSH command (ssh -L), no external crate needed
 
