@@ -22,6 +22,22 @@ impl Default for SessionId {
     }
 }
 
+/// Unique identifier for a running query
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct QueryId(pub Uuid);
+
+impl QueryId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for QueryId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Database connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionConfig {

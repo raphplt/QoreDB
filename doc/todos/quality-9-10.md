@@ -13,14 +13,14 @@ Goal: raise architecture/extensibility, reliability, security, observability, an
 
 ## 2) Query Cancellation + Timeouts (Reliability + Scalability)
 
-- [ ] Introduce a `QueryManager` that tracks `QueryId` -> active query handle per session (support multiple parallel queries).
-- [ ] Extend commands to return `query_id` on execution and accept `query_id` on cancel (keep backward compatibility if needed).
-- [ ] Implement driver-level cancellation:
-- [ ] Postgres: capture backend PID (`SELECT pg_backend_pid()`) on the executing connection; cancel from a separate pool connection with `SELECT pg_cancel_backend(pid)`.
-- [ ] MySQL: capture connection ID (`SELECT CONNECTION_ID()`) on the executing connection; cancel with `KILL QUERY <id>` (fallback to `KILL CONNECTION` if needed).
-- [ ] MongoDB: best-effort cancel via task abort + dropping cursor/session; document limitations.
+- [x] Introduce a `QueryManager` that tracks `QueryId` -> active query handle per session (support multiple parallel queries).
+- [x] Extend commands to return `query_id` on execution and accept `query_id` on cancel (keep backward compatibility if needed).
+- [x] Implement driver-level cancellation:
+- [x] Postgres: capture backend PID (`SELECT pg_backend_pid()`) on the executing connection; cancel from a separate pool connection with `SELECT pg_cancel_backend(pid)`.
+- [x] MySQL: capture connection ID (`SELECT CONNECTION_ID()`) on the executing connection; cancel with `KILL QUERY <id>` (fallback to `KILL CONNECTION` if needed).
+- [x] MongoDB: best-effort cancel via task abort + dropping cursor/session; document limitations.
 - [ ] Add driver capability flags for cancel support (real vs best-effort).
-- [ ] On timeout, trigger driver cancel + clean up in `QueryManager`.
+- [x] On timeout, trigger driver cancel + clean up in `QueryManager`.
 
 ## 3) SQL Safety + Read-Only Enforcement (Security)
 

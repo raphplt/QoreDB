@@ -17,12 +17,12 @@ use async_trait::async_trait;
 use sqlx::pool::PoolConnection;
 use sqlx::postgres::{PgPool, PgPoolOptions, PgRow, Postgres};
 use sqlx::{Column, Row, TypeInfo};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::engine::error::{EngineError, EngineResult};
 use crate::engine::traits::DataEngine;
 use crate::engine::types::{
-    Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryResult,
+    Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryId, QueryResult,
     Row as QRow, RowData, SessionId, TableColumn, TableSchema, Value,
 };
 
@@ -36,33 +36,47 @@ pub struct PostgresSession {
     pub pool: PgPool,
     /// Dedicated connection when a transaction is active
     /// This connection is acquired on BEGIN and released on COMMIT/ROLLBACK
-    pub transaction_conn: Option<PoolConnection<Postgres>>,
+    pub transaction_conn: Mutex<Option<PoolConnection<Postgres>>>,
+    /// Active queries (query_id -> backend_pid)
+    pub active_queries: Mutex<HashMap<QueryId, i32>>,
 }
 
 impl PostgresSession {
     pub fn new(pool: PgPool) -> Self {
         Self {
             pool,
-            transaction_conn: None,
+            transaction_conn: Mutex::new(None),
+            active_queries: Mutex::new(HashMap::new()),
         }
     }
 
     /// Returns true if a transaction is currently active
     pub fn has_active_transaction(&self) -> bool {
-        self.transaction_conn.is_some()
+        match self.transaction_conn.try_lock() {
+            Ok(guard) => guard.is_some(),
+            Err(_) => true,
+        }
     }
 }
 
 /// PostgreSQL driver implementation
 pub struct PostgresDriver {
-    sessions: Arc<Mutex<HashMap<SessionId, PostgresSession>>>,
+    sessions: Arc<RwLock<HashMap<SessionId, Arc<PostgresSession>>>>,
 }
 
 impl PostgresDriver {
     pub fn new() -> Self {
         Self {
-            sessions: Arc::new(Mutex::new(HashMap::new())),
+            sessions: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    async fn get_session(&self, session: SessionId) -> EngineResult<Arc<PostgresSession>> {
+        let sessions = self.sessions.read().await;
+        sessions
+            .get(&session)
+            .cloned()
+            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))
     }
 
     /// Builds a connection string from config
@@ -159,6 +173,15 @@ impl PostgresDriver {
         Value::Null
     }
 
+    async fn fetch_backend_pid(
+        conn: &mut PoolConnection<Postgres>,
+    ) -> EngineResult<i32> {
+        sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&mut **conn)
+            .await
+            .map_err(|e| EngineError::execution_error(e.to_string()))
+    }
+
     /// Gets column info from a PgRow
     fn get_column_info(row: &PgRow) -> Vec<ColumnInfo> {
         row.columns()
@@ -225,30 +248,33 @@ impl DataEngine for PostgresDriver {
             .map_err(|e| EngineError::connection_failed(e.to_string()))?;
 
         let session_id = SessionId::new();
-        let session = PostgresSession::new(pool);
+        let session = Arc::new(PostgresSession::new(pool));
 
-        let mut sessions = self.sessions.lock().await;
+        let mut sessions = self.sessions.write().await;
         sessions.insert(session_id, session);
 
         Ok(session_id)
     }
 
     async fn disconnect(&self, session: SessionId) -> EngineResult<()> {
-        let mut sessions = self.sessions.lock().await;
+        let session = {
+            let mut sessions = self.sessions.write().await;
+            sessions
+                .remove(&session)
+                .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?
+        };
 
-        if let Some(pg_session) = sessions.remove(&session) {
-            pg_session.pool.close().await;
-            Ok(())
-        } else {
-            Err(EngineError::session_not_found(session.0.to_string()))
+        {
+            let mut tx = session.transaction_conn.lock().await;
+            tx.take();
         }
+
+        session.pool.close().await;
+        Ok(())
     }
 
     async fn list_namespaces(&self, session: SessionId) -> EngineResult<Vec<Namespace>> {
-        let sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
         let pool = &pg_session.pool;
 
         // Get all schemas grouped by database
@@ -277,10 +303,7 @@ impl DataEngine for PostgresDriver {
         session: SessionId,
         namespace: &Namespace,
     ) -> EngineResult<Vec<Collection>> {
-        let sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
         let pool = &pg_session.pool;
 
         let schema = namespace.schema.as_deref().unwrap_or("public");
@@ -316,12 +339,13 @@ impl DataEngine for PostgresDriver {
         Ok(collections)
     }
 
-    async fn execute(&self, session: SessionId, query: &str) -> EngineResult<QueryResult> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
-
+    async fn execute(
+        &self,
+        session: SessionId,
+        query: &str,
+        query_id: QueryId,
+    ) -> EngineResult<QueryResult> {
+        let pg_session = self.get_session(session).await?;
         let start = Instant::now();
 
         // Determine if this is a SELECT-like query
@@ -331,10 +355,15 @@ impl DataEngine for PostgresDriver {
             || trimmed.starts_with("SHOW")
             || trimmed.starts_with("EXPLAIN");
 
-        // Route to transaction connection if active, otherwise use pool
-        if let Some(ref mut conn) = pg_session.transaction_conn {
-            // Execute on dedicated transaction connection
-            if is_select {
+        let mut tx_guard = pg_session.transaction_conn.lock().await;
+        let result = if let Some(ref mut conn) = *tx_guard {
+            let backend_pid = Self::fetch_backend_pid(conn).await?;
+            {
+                let mut active = pg_session.active_queries.lock().await;
+                active.insert(query_id, backend_pid);
+            }
+
+            let result = if is_select {
                 let pg_rows: Vec<PgRow> = sqlx::query(query)
                     .fetch_all(&mut **conn)
                     .await
@@ -350,23 +379,23 @@ impl DataEngine for PostgresDriver {
                 let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
 
                 if pg_rows.is_empty() {
-                    return Ok(QueryResult {
+                    Ok(QueryResult {
                         columns: Vec::new(),
                         rows: Vec::new(),
                         affected_rows: None,
                         execution_time_ms,
-                    });
+                    })
+                } else {
+                    let columns = Self::get_column_info(&pg_rows[0]);
+                    let rows: Vec<QRow> = pg_rows.iter().map(Self::convert_row).collect();
+
+                    Ok(QueryResult {
+                        columns,
+                        rows,
+                        affected_rows: None,
+                        execution_time_ms,
+                    })
                 }
-
-                let columns = Self::get_column_info(&pg_rows[0]);
-                let rows: Vec<QRow> = pg_rows.iter().map(Self::convert_row).collect();
-
-                Ok(QueryResult {
-                    columns,
-                    rows,
-                    affected_rows: None,
-                    execution_time_ms,
-                })
             } else {
                 let result = sqlx::query(query)
                     .execute(&mut **conn)
@@ -386,14 +415,26 @@ impl DataEngine for PostgresDriver {
                     result.rows_affected(),
                     execution_time_ms,
                 ))
-            }
-        } else {
-            // No transaction active - use pool
-            let pool = &pg_session.pool;
+            };
 
-            if is_select {
+            let mut active = pg_session.active_queries.lock().await;
+            active.remove(&query_id);
+            result
+        } else {
+            let mut conn = pg_session
+                .pool
+                .acquire()
+                .await
+                .map_err(|e| EngineError::connection_failed(e.to_string()))?;
+            let backend_pid = Self::fetch_backend_pid(&mut conn).await?;
+            {
+                let mut active = pg_session.active_queries.lock().await;
+                active.insert(query_id, backend_pid);
+            }
+
+            let result = if is_select {
                 let pg_rows: Vec<PgRow> = sqlx::query(query)
-                    .fetch_all(pool)
+                    .fetch_all(&mut *conn)
                     .await
                     .map_err(|e| {
                         let msg = e.to_string();
@@ -407,32 +448,35 @@ impl DataEngine for PostgresDriver {
                 let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
 
                 if pg_rows.is_empty() {
-                    return Ok(QueryResult {
+                    Ok(QueryResult {
                         columns: Vec::new(),
                         rows: Vec::new(),
                         affected_rows: None,
                         execution_time_ms,
-                    });
+                    })
+                } else {
+                    let columns = Self::get_column_info(&pg_rows[0]);
+                    let rows: Vec<QRow> = pg_rows.iter().map(Self::convert_row).collect();
+
+                    Ok(QueryResult {
+                        columns,
+                        rows,
+                        affected_rows: None,
+                        execution_time_ms,
+                    })
                 }
-
-                let columns = Self::get_column_info(&pg_rows[0]);
-                let rows: Vec<QRow> = pg_rows.iter().map(Self::convert_row).collect();
-
-                Ok(QueryResult {
-                    columns,
-                    rows,
-                    affected_rows: None,
-                    execution_time_ms,
-                })
             } else {
-                let result = sqlx::query(query).execute(pool).await.map_err(|e| {
-                    let msg = e.to_string();
-                    if msg.contains("syntax error") {
-                        EngineError::syntax_error(msg)
-                    } else {
-                        EngineError::execution_error(msg)
-                    }
-                })?;
+                let result = sqlx::query(query)
+                    .execute(&mut *conn)
+                    .await
+                    .map_err(|e| {
+                        let msg = e.to_string();
+                        if msg.contains("syntax error") {
+                            EngineError::syntax_error(msg)
+                        } else {
+                            EngineError::execution_error(msg)
+                        }
+                    })?;
 
                 let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
 
@@ -440,8 +484,14 @@ impl DataEngine for PostgresDriver {
                     result.rows_affected(),
                     execution_time_ms,
                 ))
-            }
-        }
+            };
+
+            let mut active = pg_session.active_queries.lock().await;
+            active.remove(&query_id);
+            result
+        };
+
+        result
     }
 
     async fn describe_table(
@@ -450,10 +500,7 @@ impl DataEngine for PostgresDriver {
         namespace: &Namespace,
         table: &str,
     ) -> EngineResult<TableSchema> {
-        let sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
         let pool = &pg_session.pool;
 
         let schema = namespace.schema.as_deref().unwrap_or("public");
@@ -548,31 +595,53 @@ impl DataEngine for PostgresDriver {
             "SELECT * FROM \"{}\".\"{}\" LIMIT {}",
             schema, table, limit
         );
-        self.execute(session, &query).await
+        self.execute(session, &query, QueryId::new()).await
     }
 
-    async fn cancel(&self, session: SessionId) -> EngineResult<()> {
-        // PostgreSQL cancellation requires pg_cancel_backend
-        // For now, we just verify the session exists
-        let sessions = self.sessions.lock().await;
-        if sessions.contains_key(&session) {
-            // TODO: Implement proper query cancellation with pg_cancel_backend
-            Ok(())
-        } else {
-            Err(EngineError::session_not_found(session.0.to_string()))
+    async fn cancel(&self, session: SessionId, query_id: Option<QueryId>) -> EngineResult<()> {
+        let pg_session = self.get_session(session).await?;
+
+        let backend_pids: Vec<i32> = {
+            let active = pg_session.active_queries.lock().await;
+            if let Some(qid) = query_id {
+                match active.get(&qid) {
+                    Some(pid) => vec![*pid],
+                    None => return Err(EngineError::execution_error("Query not found")),
+                }
+            } else {
+                active.values().copied().collect()
+            }
+        };
+
+        if backend_pids.is_empty() {
+            return Err(EngineError::execution_error("No active queries to cancel"));
         }
+
+        let mut conn = pg_session
+            .pool
+            .acquire()
+            .await
+            .map_err(|e| EngineError::connection_failed(e.to_string()))?;
+
+        for pid in backend_pids {
+            let _ = sqlx::query("SELECT pg_cancel_backend($1)")
+                .bind(pid)
+                .execute(&mut *conn)
+                .await
+                .map_err(|e| EngineError::execution_error(e.to_string()))?;
+        }
+
+        Ok(())
     }
 
     // ==================== Transaction Methods ====================
 
     async fn begin_transaction(&self, session: SessionId) -> EngineResult<()> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
+        let mut tx = pg_session.transaction_conn.lock().await;
 
         // Check if a transaction is already active
-        if pg_session.transaction_conn.is_some() {
+        if tx.is_some() {
             return Err(EngineError::transaction_error(
                 "A transaction is already active on this session"
             ));
@@ -593,19 +662,17 @@ impl DataEngine for PostgresDriver {
             )))?;
 
         // Store the dedicated connection
-        pg_session.transaction_conn = Some(conn);
+        *tx = Some(conn);
 
         Ok(())
     }
 
     async fn commit(&self, session: SessionId) -> EngineResult<()> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
+        let mut tx = pg_session.transaction_conn.lock().await;
 
         // Get the dedicated connection, or error if no transaction active
-        let mut conn = pg_session.transaction_conn.take()
+        let mut conn = tx.take()
             .ok_or_else(|| EngineError::transaction_error(
                 "No active transaction to commit"
             ))?;
@@ -623,13 +690,11 @@ impl DataEngine for PostgresDriver {
     }
 
     async fn rollback(&self, session: SessionId) -> EngineResult<()> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
+        let mut tx = pg_session.transaction_conn.lock().await;
 
         // Get the dedicated connection, or error if no transaction active
-        let mut conn = pg_session.transaction_conn.take()
+        let mut conn = tx.take()
             .ok_or_else(|| EngineError::transaction_error(
                 "No active transaction to rollback"
             ))?;
@@ -659,10 +724,7 @@ impl DataEngine for PostgresDriver {
         table: &str,
         data: &RowData,
     ) -> EngineResult<QueryResult> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
 
         // 1. Build Query String
         let table_name = if let Some(schema) = &namespace.schema {
@@ -691,7 +753,8 @@ impl DataEngine for PostgresDriver {
 
         // 3. Execute
         let start = Instant::now();
-        let result = if let Some(ref mut conn) = pg_session.transaction_conn {
+        let mut tx_guard = pg_session.transaction_conn.lock().await;
+        let result = if let Some(ref mut conn) = *tx_guard {
              query.execute(&mut **conn).await
         } else {
              query.execute(&pg_session.pool).await
@@ -713,10 +776,7 @@ impl DataEngine for PostgresDriver {
         primary_key: &RowData,
         data: &RowData,
     ) -> EngineResult<QueryResult> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
 
         if primary_key.columns.is_empty() {
             return Err(EngineError::execution_error("Primary key required for update operations".to_string()));
@@ -775,7 +835,8 @@ impl DataEngine for PostgresDriver {
         }
 
         let start = Instant::now();
-        let result = if let Some(ref mut conn) = pg_session.transaction_conn {
+        let mut tx_guard = pg_session.transaction_conn.lock().await;
+        let result = if let Some(ref mut conn) = *tx_guard {
              query.execute(&mut **conn).await
         } else {
              query.execute(&pg_session.pool).await
@@ -796,10 +857,7 @@ impl DataEngine for PostgresDriver {
         table: &str,
         primary_key: &RowData,
     ) -> EngineResult<QueryResult> {
-        let mut sessions = self.sessions.lock().await;
-        let pg_session = sessions
-            .get_mut(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+        let pg_session = self.get_session(session).await?;
 
         if primary_key.columns.is_empty() {
             return Err(EngineError::execution_error("Primary key required for delete operations".to_string()));
@@ -831,7 +889,8 @@ impl DataEngine for PostgresDriver {
         }
 
         let start = Instant::now();
-        let result = if let Some(ref mut conn) = pg_session.transaction_conn {
+        let mut tx_guard = pg_session.transaction_conn.lock().await;
+        let result = if let Some(ref mut conn) = *tx_guard {
              query.execute(&mut **conn).await
         } else {
              query.execute(&pg_session.pool).await

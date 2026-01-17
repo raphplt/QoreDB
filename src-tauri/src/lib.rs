@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use engine::drivers::mongodb::MongoDriver;
 use engine::drivers::mysql::MySqlDriver;
 use engine::drivers::postgres::PostgresDriver;
-use engine::{DriverRegistry, SessionManager};
+use engine::{DriverRegistry, QueryManager, SessionManager};
 use policy::SafetyPolicy;
 use vault::VaultLock;
 
@@ -22,6 +22,7 @@ pub struct AppState {
     pub session_manager: Arc<SessionManager>,
     pub vault_lock: VaultLock,
     pub policy: SafetyPolicy,
+    pub query_manager: Arc<QueryManager>,
 }
 
 impl AppState {
@@ -36,6 +37,7 @@ impl AppState {
         let session_manager = Arc::new(SessionManager::new(Arc::clone(&registry)));
         let mut vault_lock = VaultLock::new();
         let policy = SafetyPolicy::load();
+        let query_manager = Arc::new(QueryManager::new());
 
         let _ = vault_lock.auto_unlock_if_no_password();
 
@@ -44,6 +46,7 @@ impl AppState {
             session_manager,
             vault_lock,
             policy,
+            query_manager,
         }
     }
 }

@@ -7,26 +7,29 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use async_trait::async_trait;
+use futures::future::{AbortHandle, Abortable};
 use mongodb::bson::{doc, Document};
 use mongodb::{Client, options::ClientOptions};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::engine::error::{EngineError, EngineResult};
 use crate::engine::traits::DataEngine;
 use crate::engine::types::{
-    Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryResult,
+    Collection, CollectionType, ColumnInfo, ConnectionConfig, Namespace, QueryId, QueryResult,
     Row as QRow, SessionId, TableColumn, TableSchema, Value,
 };
 
 /// MongoDB driver implementation
 pub struct MongoDriver {
     sessions: Arc<RwLock<HashMap<SessionId, Client>>>,
+    active_queries: Arc<Mutex<HashMap<QueryId, (SessionId, AbortHandle)>>>,
 }
 
 impl MongoDriver {
     pub fn new() -> Self {
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            active_queries: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -307,36 +310,87 @@ impl DataEngine for MongoDriver {
         Ok(collections)
     }
 
-    async fn execute(&self, session: SessionId, query: &str) -> EngineResult<QueryResult> {
+    async fn execute(
+        &self,
+        session: SessionId,
+        query: &str,
+        query_id: QueryId,
+    ) -> EngineResult<QueryResult> {
         let sessions = self.sessions.read().await;
         let client = sessions
             .get(&session)
-            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?;
+            .ok_or_else(|| EngineError::session_not_found(session.0.to_string()))?
+            .clone();
+        drop(sessions);
 
-        let start = Instant::now();
+        let (abort_handle, abort_reg) = AbortHandle::new_pair();
+        {
+            let mut active = self.active_queries.lock().await;
+            active.insert(query_id, (session, abort_handle));
+        }
 
-        let trimmed = query.trim();
+        let query = query.to_string();
+        let result = Abortable::new(
+            async move {
+                let start = Instant::now();
+                let trimmed = query.trim();
 
-        if trimmed.starts_with('{') {
-            let parsed: serde_json::Value = serde_json::from_str(trimmed)
-                .map_err(|e| EngineError::syntax_error(format!("Invalid JSON: {}", e)))?;
+                if trimmed.starts_with('{') {
+                    let parsed: serde_json::Value = serde_json::from_str(trimmed)
+                        .map_err(|e| EngineError::syntax_error(format!("Invalid JSON: {}", e)))?;
 
-            if let Some(operation) = parsed.get("operation").and_then(|v| v.as_str()) {
-                if operation == "create_collection" {
-                    let database = parsed["database"]
-                        .as_str()
-                        .ok_or_else(|| EngineError::syntax_error("Missing 'database' field"))?;
-                    let collection = parsed["collection"]
-                        .as_str()
-                        .ok_or_else(|| EngineError::syntax_error("Missing 'collection' field"))?;
+                    if let Some(operation) = parsed.get("operation").and_then(|v| v.as_str()) {
+                        if operation == "create_collection" {
+                            let database = parsed["database"]
+                                .as_str()
+                                .ok_or_else(|| EngineError::syntax_error("Missing 'database' field"))?;
+                            let collection = parsed["collection"]
+                                .as_str()
+                                .ok_or_else(|| EngineError::syntax_error("Missing 'collection' field"))?;
 
-                    client
-                        .database(database)
-                        .run_command(doc! { "create": collection })
-                        .await
-                        .map_err(|e| EngineError::execution_error(e.to_string()))?;
+                            client
+                                .database(database)
+                                .run_command(doc! { "create": collection })
+                                .await
+                                .map_err(|e| EngineError::execution_error(e.to_string()))?;
 
-                    let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+                            let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+                            return Ok(QueryResult {
+                                columns: Vec::new(),
+                                rows: Vec::new(),
+                                affected_rows: None,
+                                execution_time_ms,
+                            });
+                        }
+                    }
+                }
+
+                let (database, collection_name, filter) = Self::parse_query(&query)?;
+
+                let collection = client.database(&database).collection::<Document>(&collection_name);
+
+                let mut cursor = collection
+                    .find(filter)
+                    .await
+                    .map_err(|e| EngineError::execution_error(e.to_string()))?;
+
+                let mut documents: Vec<Document> = Vec::new();
+                use futures::TryStreamExt;
+                while let Some(doc) = cursor
+                    .try_next()
+                    .await
+                    .map_err(|e| EngineError::execution_error(e.to_string()))?
+                {
+                    documents.push(doc);
+                    // Limit for POC
+                    if documents.len() >= 1000 {
+                        break;
+                    }
+                }
+
+                let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
+
+                if documents.is_empty() {
                     return Ok(QueryResult {
                         columns: Vec::new(),
                         rows: Vec::new(),
@@ -344,52 +398,30 @@ impl DataEngine for MongoDriver {
                         execution_time_ms,
                     });
                 }
-            }
-        }
 
-        let (database, collection_name, filter) = Self::parse_query(query)?;
+                let columns = Self::get_column_info(&documents[0]);
+                let rows: Vec<QRow> = documents.iter().map(Self::document_to_row).collect();
 
-        let collection = client.database(&database).collection::<Document>(&collection_name);
+                Ok(QueryResult {
+                    columns,
+                    rows,
+                    affected_rows: None,
+                    execution_time_ms,
+                })
+            },
+            abort_reg,
+        )
+        .await;
 
-        let mut cursor = collection
-            .find(filter)
-            .await
-            .map_err(|e| EngineError::execution_error(e.to_string()))?;
-
-        let mut documents: Vec<Document> = Vec::new();
-        use futures::TryStreamExt;
-        while let Some(doc) = cursor
-            .try_next()
-            .await
-            .map_err(|e| EngineError::execution_error(e.to_string()))?
         {
-            documents.push(doc);
-            // Limit for POC
-            if documents.len() >= 1000 {
-                break;
-            }
+            let mut active = self.active_queries.lock().await;
+            active.remove(&query_id);
         }
 
-        let execution_time_ms = start.elapsed().as_micros() as f64 / 1000.0;
-
-        if documents.is_empty() {
-            return Ok(QueryResult {
-                columns: Vec::new(),
-                rows: Vec::new(),
-                affected_rows: None,
-                execution_time_ms,
-            });
+        match result {
+            Ok(inner) => inner,
+            Err(_) => Err(EngineError::Cancelled),
         }
-
-        let columns = Self::get_column_info(&documents[0]);
-        let rows: Vec<QRow> = documents.iter().map(Self::document_to_row).collect();
-
-        Ok(QueryResult {
-            columns,
-            rows,
-            affected_rows: None,
-            execution_time_ms,
-        })
     }
 
     async fn describe_table(
@@ -532,13 +564,38 @@ impl DataEngine for MongoDriver {
         })
     }
 
-    async fn cancel(&self, session: SessionId) -> EngineResult<()> {
+    async fn cancel(&self, session: SessionId, query_id: Option<QueryId>) -> EngineResult<()> {
         let sessions = self.sessions.read().await;
-        if sessions.contains_key(&session) {
-            Ok(())
-        } else {
-            Err(EngineError::session_not_found(session.0.to_string()))
+        if !sessions.contains_key(&session) {
+            return Err(EngineError::session_not_found(session.0.to_string()));
         }
+        drop(sessions);
+
+        let mut active = self.active_queries.lock().await;
+
+        if let Some(qid) = query_id {
+            if let Some((sid, handle)) = active.get(&qid) {
+                if *sid == session {
+                    handle.abort();
+                    active.remove(&qid);
+                    return Ok(());
+                }
+            }
+            return Err(EngineError::execution_error("Query not found"));
+        }
+
+        let to_cancel: Vec<QueryId> = active
+            .iter()
+            .filter_map(|(qid, (sid, _))| if *sid == session { Some(*qid) } else { None })
+            .collect();
+
+        for qid in to_cancel {
+            if let Some((_, handle)) = active.remove(&qid) {
+                handle.abort();
+            }
+        }
+
+        Ok(())
     }
 
     // ==================== Transaction Methods ====================

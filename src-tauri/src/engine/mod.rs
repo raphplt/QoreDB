@@ -3,6 +3,7 @@
 
 pub mod drivers;
 pub mod error;
+pub mod query_manager;
 pub mod registry;
 pub mod session_manager;
 pub mod ssh_tunnel;
@@ -10,6 +11,7 @@ pub mod traits;
 pub mod types;
 
 pub use error::EngineError;
+pub use query_manager::QueryManager;
 pub use registry::DriverRegistry;
 pub use session_manager::SessionManager;
 pub use traits::DataEngine;

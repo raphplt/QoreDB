@@ -189,16 +189,22 @@ export async function setSafetyPolicy(
 export async function executeQuery(
 	sessionId: string,
 	query: string,
-	options?: { acknowledgedDangerous?: boolean; timeoutMs?: number },
+	options?: {
+		acknowledgedDangerous?: boolean;
+		timeoutMs?: number;
+		queryId?: string;
+	},
 ): Promise<{
 	success: boolean;
 	result?: QueryResult;
 	error?: string;
+	query_id?: string;
 }> {
 	return invoke("execute_query", {
 		sessionId,
 		query,
 		acknowledgedDangerous: options?.acknowledgedDangerous,
+		queryId: options?.queryId,
 		timeoutMs: options?.timeoutMs,
 	});
 }
@@ -222,11 +228,15 @@ export async function listCollections(
 	return invoke("list_collections", { sessionId, namespace });
 }
 
-export async function cancelQuery(sessionId: string): Promise<{
+export async function cancelQuery(
+	sessionId: string,
+	queryId?: string,
+): Promise<{
 	success: boolean;
 	error?: string;
+	query_id?: string;
 }> {
-	return invoke("cancel_query", { sessionId });
+	return invoke("cancel_query", { sessionId, queryId });
 }
 
 // ============================================

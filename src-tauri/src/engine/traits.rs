@@ -8,7 +8,7 @@ use async_trait::async_trait;
 
 use crate::engine::error::EngineResult;
 use crate::engine::types::{
-    Collection, ConnectionConfig, Namespace, QueryResult, RowData, SessionId, TableSchema,
+    Collection, ConnectionConfig, Namespace, QueryId, QueryResult, RowData, SessionId, TableSchema,
 };
 
 /// Core trait that all database drivers must implement
@@ -51,7 +51,12 @@ pub trait DataEngine: Send + Sync {
     ///
     /// For SQL engines: executes SQL statements
     /// For MongoDB: expects JSON query format
-    async fn execute(&self, session: SessionId, query: &str) -> EngineResult<QueryResult>;
+    async fn execute(
+        &self,
+        session: SessionId,
+        query: &str,
+        query_id: QueryId,
+    ) -> EngineResult<QueryResult>;
 
     /// Returns the schema of a table/collection
     ///
@@ -73,7 +78,12 @@ pub trait DataEngine: Send + Sync {
     ) -> EngineResult<QueryResult>;
 
     /// Cancels a running query for the given session
-    async fn cancel(&self, session: SessionId) -> EngineResult<()>;
+    async fn cancel(&self, session: SessionId, query_id: Option<QueryId>) -> EngineResult<()> {
+        let _ = (session, query_id);
+        Err(crate::engine::error::EngineError::not_supported(
+            "Query cancellation is not supported by this driver"
+        ))
+    }
 
     // ==================== Transaction Methods ====================
     // These have default implementations that return NotSupported.

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
-use crate::engine::{TableSchema, types::{Collection, Namespace, QueryResult, SessionId}};
+use crate::engine::{TableSchema, types::{Collection, Namespace, QueryId, QueryResult, SessionId}};
 
 const READ_ONLY_BLOCKED: &str = "Operation blocked: read-only mode";
 const DANGEROUS_BLOCKED: &str = "Dangerous query blocked: confirmation required";
@@ -174,6 +174,7 @@ pub struct QueryResponse {
     pub success: bool,
     pub result: Option<QueryResult>,
     pub error: Option<String>,
+    pub query_id: Option<String>,
 }
 
 /// Response wrapper for namespace listing
@@ -205,11 +206,16 @@ pub async fn execute_query(
     session_id: String,
     query: String,
     acknowledged_dangerous: Option<bool>,
+    query_id: Option<String>,
     timeout_ms: Option<u64>,
 ) -> Result<QueryResponse, String> {
-    let (session_manager, policy) = {
+    let (session_manager, query_manager, policy) = {
         let state = state.lock().await;
-        (Arc::clone(&state.session_manager), state.policy.clone())
+        (
+            Arc::clone(&state.session_manager),
+            Arc::clone(&state.query_manager),
+            state.policy.clone(),
+        )
     };
     let session = parse_session_id(&session_id)?;
 
@@ -220,6 +226,7 @@ pub async fn execute_query(
                 success: false,
                 result: None,
                 error: Some(e.to_string()),
+                query_id: None,
             });
         }
     };
@@ -231,6 +238,7 @@ pub async fn execute_query(
                 success: false,
                 result: None,
                 error: Some(e.to_string()),
+                query_id: None,
             });
         }
     };
@@ -240,6 +248,7 @@ pub async fn execute_query(
             success: false,
             result: None,
             error: Some(READ_ONLY_BLOCKED.to_string()),
+            query_id: None,
         });
     }
 
@@ -257,6 +266,7 @@ pub async fn execute_query(
                 success: false,
                 result: None,
                 error: Some(DANGEROUS_BLOCKED_POLICY.to_string()),
+                query_id: None,
             });
         }
 
@@ -265,22 +275,38 @@ pub async fn execute_query(
                 success: false,
                 result: None,
                 error: Some(DANGEROUS_BLOCKED.to_string()),
+                query_id: None,
             });
         }
     }
 
+    let query_id = if let Some(raw) = query_id {
+        let parsed = Uuid::parse_str(&raw).map_err(|e| format!("Invalid query ID: {}", e))?;
+        let qid = QueryId(parsed);
+        query_manager
+            .register_with_id(session, qid)
+            .await
+            .map_err(|e| format!("Failed to register query ID: {}", e))?;
+        qid
+    } else {
+        query_manager.register(session).await
+    };
+    let query_id_str = query_id.0.to_string();
+
     let start_time = std::time::Instant::now();
-    let execution = driver.execute(session, &query);
+    let execution = driver.execute(session, &query, query_id);
 
     let result = if let Some(timeout_value) = timeout_ms {
         match timeout(Duration::from_millis(timeout_value), execution).await {
             Ok(res) => res,
             Err(_) => {
-                let _ = driver.cancel(session).await;
+                let _ = driver.cancel(session, Some(query_id)).await;
+                query_manager.finish(query_id).await;
                 return Ok(QueryResponse {
                     success: false,
                     result: None,
                     error: Some(format!("Operation timed out after {}ms", timeout_value)),
+                    query_id: Some(query_id_str),
                 });
             }
         }
@@ -288,7 +314,7 @@ pub async fn execute_query(
         execution.await
     };
 
-    match result {
+    let response = match result {
         Ok(mut result) => {
             let elapsed = start_time.elapsed().as_micros() as f64 / 1000.0;
             result.execution_time_ms = elapsed;
@@ -297,14 +323,19 @@ pub async fn execute_query(
                 success: true,
                 result: Some(result),
                 error: None,
+                query_id: Some(query_id_str),
             })
         }
         Err(e) => Ok(QueryResponse {
             success: false,
             result: None,
             error: Some(e.to_string()),
+            query_id: Some(query_id_str),
         }),
-    }
+    };
+
+    query_manager.finish(query_id).await;
+    response
 }
 
 /// Cancels a running query
@@ -312,10 +343,11 @@ pub async fn execute_query(
 pub async fn cancel_query(
     state: State<'_, crate::SharedState>,
     session_id: String,
+    query_id: Option<String>,
 ) -> Result<QueryResponse, String> {
-    let session_manager = {
+    let (session_manager, query_manager) = {
         let state = state.lock().await;
-        Arc::clone(&state.session_manager)
+        (Arc::clone(&state.session_manager), Arc::clone(&state.query_manager))
     };
     let session = parse_session_id(&session_id)?;
 
@@ -326,20 +358,41 @@ pub async fn cancel_query(
                 success: false,
                 result: None,
                 error: Some(e.to_string()),
+                query_id: None,
             });
         }
     };
 
-    match driver.cancel(session).await {
+    let query_id = if let Some(raw) = query_id {
+        let parsed = Uuid::parse_str(&raw).map_err(|e| format!("Invalid query ID: {}", e))?;
+        QueryId(parsed)
+    } else {
+        match query_manager.last_for_session(session).await {
+            Some(qid) => qid,
+            None => {
+                return Ok(QueryResponse {
+                    success: false,
+                    result: None,
+                    error: Some("No active query found".to_string()),
+                    query_id: None,
+                });
+            }
+        }
+    };
+    let query_id_str = query_id.0.to_string();
+
+    match driver.cancel(session, Some(query_id)).await {
         Ok(()) => Ok(QueryResponse {
             success: true,
             result: None,
             error: None,
+            query_id: Some(query_id_str),
         }),
         Err(e) => Ok(QueryResponse {
             success: false,
             result: None,
             error: Some(e.to_string()),
+            query_id: Some(query_id_str),
         }),
     }
 }
@@ -488,6 +541,7 @@ pub async fn preview_table(
                 success: false,
                 result: None,
                 error: Some(e.to_string()),
+                query_id: None,
             });
         }
     };
@@ -497,11 +551,13 @@ pub async fn preview_table(
             success: true,
             result: Some(result),
             error: None,
+            query_id: None,
         }),
         Err(e) => Ok(QueryResponse {
             success: false,
             result: None,
             error: Some(e.to_string()),
+            query_id: None,
         }),
     }
 }
