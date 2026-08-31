@@ -10,10 +10,10 @@
 
 use qoredb_lib::engine::{
     drivers::{
-        clickhouse::ClickHouseDriver, documentdb::DocumentDbDriver, duckdb::DuckDbDriver,
-        elasticsearch::ElasticsearchDriver, mongodb::MongoDriver, mysql::MySqlDriver,
-        planetscale::PlanetScaleDriver, postgres::PostgresDriver, redis::RedisDriver,
-        sqlite::SqliteDriver, sqlserver::SqlServerDriver,
+        cassandra::CassandraDriver, clickhouse::ClickHouseDriver, documentdb::DocumentDbDriver,
+        duckdb::DuckDbDriver, elasticsearch::ElasticsearchDriver, mongodb::MongoDriver,
+        mysql::MySqlDriver, planetscale::PlanetScaleDriver, postgres::PostgresDriver,
+        redis::RedisDriver, sqlite::SqliteDriver, sqlserver::SqlServerDriver,
     },
     error::{EngineError, EngineResult},
     traits::DataEngine,
@@ -62,6 +62,8 @@ enum Service {
     Dragonfly,
     PlanetScale,
     SqlServer,
+    Cassandra,
+    ScyllaDb,
     ClickHouse,
     Search,
 }
@@ -77,6 +79,8 @@ impl Service {
             Service::Dragonfly => "Dragonfly",
             Service::PlanetScale => "MySQL (PlanetScale stand-in)",
             Service::SqlServer => "SQL Server",
+            Service::Cassandra => "Cassandra",
+            Service::ScyllaDb => "ScyllaDB",
             Service::ClickHouse => "ClickHouse",
             Service::Search => "Elasticsearch",
         }
@@ -92,6 +96,8 @@ impl Service {
             Service::Dragonfly => "QOREDB_TEST_DRAGONFLY_REQUIRED",
             Service::PlanetScale => "QOREDB_TEST_PLANETSCALE_REQUIRED",
             Service::SqlServer => "QOREDB_TEST_SQLSERVER_REQUIRED",
+            Service::Cassandra => "QOREDB_TEST_CASSANDRA_REQUIRED",
+            Service::ScyllaDb => "QOREDB_TEST_SCYLLADB_REQUIRED",
             Service::ClickHouse => "QOREDB_TEST_CLICKHOUSE_REQUIRED",
             Service::Search => "QOREDB_TEST_SEARCH_REQUIRED",
         }
@@ -292,6 +298,44 @@ fn sqlserver_config() -> ConnectionConfig {
     }
 }
 
+/// `docker-compose.yml` runs Cassandra without authentication and ScyllaDB with
+/// `PasswordAuthenticator`, so the two configs cover both handshake paths.
+fn cassandra_config() -> ConnectionConfig {
+    ConnectionConfig {
+        options: Default::default(),
+        driver: "cassandra".to_string(),
+        host: env_or_default("QOREDB_TEST_CASSANDRA_HOST", "127.0.0.1"),
+        port: env_u16_or_default("QOREDB_TEST_CASSANDRA_PORT", 9042),
+        username: env_or_default("QOREDB_TEST_CASSANDRA_USER", ""),
+        password: env_or_default("QOREDB_TEST_CASSANDRA_PASSWORD", ""),
+        database: None,
+        ssl: false,
+        ssl_mode: None,
+        environment: "development".to_string(),
+        read_only: false,
+        ssh_tunnel: None,
+        pool_acquire_timeout_secs: None,
+        pool_max_connections: None,
+        pool_min_connections: None,
+        proxy: None,
+        mssql_auth: None,
+        clickhouse_cluster: None,
+        search_auth_mode: None,
+        ssl_ca_cert: None,
+    }
+}
+
+fn scylladb_config() -> ConnectionConfig {
+    ConnectionConfig {
+        driver: "scylladb".to_string(),
+        host: env_or_default("QOREDB_TEST_SCYLLADB_HOST", "127.0.0.1"),
+        port: env_u16_or_default("QOREDB_TEST_SCYLLADB_PORT", 9043),
+        username: env_or_default("QOREDB_TEST_SCYLLADB_USER", "cassandra"),
+        password: env_or_default("QOREDB_TEST_SCYLLADB_PASSWORD", "cassandra"),
+        ..cassandra_config()
+    }
+}
+
 fn elasticsearch_config() -> ConnectionConfig {
     ConnectionConfig {
         options: Default::default(),
@@ -472,6 +516,22 @@ async fn connect_redis() -> EngineResult<(Arc<RedisDriver>, SessionId, Connectio
 async fn connect_sqlserver() -> EngineResult<(Arc<SqlServerDriver>, SessionId, ConnectionConfig)> {
     let config = sqlserver_config();
     let driver = Arc::new(SqlServerDriver::new());
+    wait_for_connection(driver.as_ref(), &config).await?;
+    let session = driver.connect(&config).await?;
+    Ok((driver, session, config))
+}
+
+async fn connect_cassandra() -> EngineResult<(Arc<CassandraDriver>, SessionId, ConnectionConfig)> {
+    let config = cassandra_config();
+    let driver = Arc::new(CassandraDriver::new());
+    wait_for_connection(driver.as_ref(), &config).await?;
+    let session = driver.connect(&config).await?;
+    Ok((driver, session, config))
+}
+
+async fn connect_scylladb() -> EngineResult<(Arc<CassandraDriver>, SessionId, ConnectionConfig)> {
+    let config = scylladb_config();
+    let driver = Arc::new(CassandraDriver::scylladb());
     wait_for_connection(driver.as_ref(), &config).await?;
     let session = driver.connect(&config).await?;
     Ok((driver, session, config))
@@ -2446,5 +2506,174 @@ async fn documentdb_refuses_an_unverifiable_certificate() -> EngineResult<()> {
         err.to_string().contains("CA certificate"),
         "a missing bundle is reported, not silently ignored: {err}"
     );
+    Ok(())
+}
+
+/// Exercises the hand-written CQL client end to end: handshake, keyspace DDL,
+/// introspection through `system_schema`, bound mutations and the native paging
+/// cursor. This is the pass the unit tests cannot make — they are built from the
+/// wire encoding, not from what a server actually sends.
+#[tokio::test]
+async fn cassandra_e2e() -> EngineResult<()> {
+    let Some((driver, session, _config)) = connect_or_skip(
+        connect_cassandra().await,
+        Service::Cassandra,
+        "cassandra_e2e",
+    )?
+    else {
+        return Ok(());
+    };
+
+    let keyspace = format!("qoredb_{}", Uuid::new_v4().simple());
+    driver
+        .create_database(session, &keyspace, None)
+        .await
+        .expect("keyspace creation");
+
+    let namespace = Namespace {
+        database: keyspace.clone(),
+        schema: None,
+    };
+    let table = "people";
+    driver
+        .execute(
+            session,
+            &format!(
+                "CREATE TABLE \"{keyspace}\".\"{table}\" \
+                 (id int, bucket int, name text, score double, tags set<text>, \
+                  PRIMARY KEY ((id), bucket))"
+            ),
+            QueryId::new(),
+        )
+        .await?;
+
+    // Namespaces and collections come back from the catalog, not from a cache.
+    let namespaces = driver.list_namespaces(session).await?;
+    assert!(
+        namespaces.iter().any(|ns| ns.database == keyspace),
+        "the new keyspace must be listed"
+    );
+    let collections = driver
+        .list_collections(session, &namespace, CollectionListOptions::default())
+        .await?;
+    assert!(collections.collections.iter().any(|c| c.name == table));
+
+    // The primary key must come back in ring order: partition key, then
+    // clustering column. Getting that order wrong breaks every bound mutation.
+    let schema = driver.describe_table(session, &namespace, table).await?;
+    assert_eq!(
+        schema.primary_key.as_deref(),
+        Some(&["id".to_string(), "bucket".to_string()][..])
+    );
+
+    // Values are bound, never interpolated.
+    for id in 0..3 {
+        let mut row = RowData::new();
+        row.columns.insert("id".to_string(), Value::Int(id));
+        row.columns.insert("bucket".to_string(), Value::Int(1));
+        row.columns
+            .insert("name".to_string(), Value::Text(format!("person-{id}")));
+        row.columns
+            .insert("score".to_string(), Value::Float(1.5 * id as f64));
+        driver.insert_row(session, &namespace, table, &row).await?;
+    }
+
+    let preview = driver.preview_table(session, &namespace, table, 10).await?;
+    assert_eq!(preview.rows.len(), 3);
+
+    // A mutation without the full primary key must be refused before the wire,
+    // not left for the server to reject.
+    let mut partial = RowData::new();
+    partial.columns.insert("id".to_string(), Value::Int(0));
+    assert!(
+        driver
+            .delete_row(session, &namespace, table, &partial)
+            .await
+            .is_err(),
+        "a partial primary key must be refused"
+    );
+
+    let mut key = RowData::new();
+    key.columns.insert("id".to_string(), Value::Int(0));
+    key.columns.insert("bucket".to_string(), Value::Int(1));
+    let mut update = RowData::new();
+    update
+        .columns
+        .insert("name".to_string(), Value::Text("renamed".to_string()));
+    driver
+        .update_row(session, &namespace, table, &key, &update)
+        .await?;
+    driver.delete_row(session, &namespace, table, &key).await?;
+
+    // The native paging state drives the cursor, one row at a time.
+    let first = driver
+        .query_table(
+            session,
+            &namespace,
+            table,
+            TableQueryOptions {
+                page_size: Some(1),
+                count_mode: Some(CountMode::None),
+                ..Default::default()
+            },
+        )
+        .await?;
+    assert_eq!(first.result.rows.len(), 1);
+    assert_eq!(first.pagination_strategy, PaginationStrategy::Keyset);
+    assert_eq!(first.ordering_guarantee, OrderingGuarantee::Stable);
+    assert!(first.has_more, "two rows are left after the delete");
+    let cursor = first
+        .next_cursor
+        .clone()
+        .expect("a cursor for the next page");
+
+    let second = driver
+        .query_table(
+            session,
+            &namespace,
+            table,
+            TableQueryOptions {
+                page_size: Some(1),
+                count_mode: Some(CountMode::None),
+                cursor: Some(cursor),
+                ..Default::default()
+            },
+        )
+        .await?;
+    assert_eq!(second.result.rows.len(), 1);
+
+    driver.drop_database(session, &keyspace).await?;
+    driver.disconnect(session).await?;
+    Ok(())
+}
+
+/// ScyllaDB runs the same client against the same protocol, with authentication
+/// on. Only the handshake differs, so this asserts the identity and one query
+/// rather than repeating the Cassandra pass.
+#[tokio::test]
+async fn scylladb_e2e() -> EngineResult<()> {
+    let Some((driver, session, _config)) =
+        connect_or_skip(connect_scylladb().await, Service::ScyllaDb, "scylladb_e2e")?
+    else {
+        return Ok(());
+    };
+
+    assert_eq!(driver.driver_id(), "scylladb");
+    let result = driver
+        .execute(
+            session,
+            "SELECT release_version FROM system.local",
+            QueryId::new(),
+        )
+        .await?;
+    assert_eq!(result.rows.len(), 1);
+
+    let namespaces = driver.list_namespaces(session).await?;
+    assert!(
+        namespaces.iter().any(|ns| ns.database == "system_schema"),
+        "the system keyspaces must be visible"
+    );
+
+    driver.disconnect(session).await?;
     Ok(())
 }
