@@ -13,7 +13,8 @@ use qoredb_lib::engine::{
         cassandra::CassandraDriver, clickhouse::ClickHouseDriver, documentdb::DocumentDbDriver,
         duckdb::DuckDbDriver, elasticsearch::ElasticsearchDriver, mongodb::MongoDriver,
         mysql::MySqlDriver, planetscale::PlanetScaleDriver, postgres::PostgresDriver,
-        redis::RedisDriver, sqlite::SqliteDriver, sqlserver::SqlServerDriver,
+        redis::RedisDriver, snowflake::SnowflakeDriver, sqlite::SqliteDriver,
+        sqlserver::SqlServerDriver,
     },
     error::{EngineError, EngineResult},
     traits::DataEngine,
@@ -66,6 +67,7 @@ enum Service {
     ScyllaDb,
     ClickHouse,
     Search,
+    Snowflake,
 }
 
 impl Service {
@@ -83,6 +85,7 @@ impl Service {
             Service::ScyllaDb => "ScyllaDB",
             Service::ClickHouse => "ClickHouse",
             Service::Search => "Elasticsearch",
+            Service::Snowflake => "Snowflake",
         }
     }
 
@@ -100,6 +103,7 @@ impl Service {
             Service::ScyllaDb => "QOREDB_TEST_SCYLLADB_REQUIRED",
             Service::ClickHouse => "QOREDB_TEST_CLICKHOUSE_REQUIRED",
             Service::Search => "QOREDB_TEST_SEARCH_REQUIRED",
+            Service::Snowflake => "QOREDB_TEST_SNOWFLAKE_REQUIRED",
         }
     }
 
@@ -2846,6 +2850,108 @@ async fn type_codec_round_trip(
     }
 
     driver.drop_database(session, &keyspace).await?;
+    driver.disconnect(session).await?;
+    Ok(())
+}
+
+/// Snowflake has no container: the test runs only when an account is
+/// configured through `QOREDB_TEST_SNOWFLAKE_ACCOUNT`, `_USER`,
+/// `_PRIVATE_KEY_PATH`, `_DATABASE` and `_WAREHOUSE`.
+#[tokio::test]
+async fn snowflake_e2e() -> EngineResult<()> {
+    let var = |name: &str| std::env::var(format!("QOREDB_TEST_SNOWFLAKE_{name}")).ok();
+    let (Some(account), Some(user), Some(key_path), Some(database)) = (
+        var("ACCOUNT"),
+        var("USER"),
+        var("PRIVATE_KEY_PATH"),
+        var("DATABASE"),
+    ) else {
+        if Service::Snowflake.required() {
+            panic!("QOREDB_TEST_SNOWFLAKE_* must be set when Snowflake is required");
+        }
+        eprintln!("snowflake_e2e skipped: no account configured");
+        return Ok(());
+    };
+    let key = std::fs::read_to_string(&key_path).expect("private key file");
+    let mut options = std::collections::HashMap::new();
+    if let Some(warehouse) = var("WAREHOUSE") {
+        options.insert("warehouse".to_string(), warehouse);
+    }
+    let config = ConnectionConfig {
+        driver: "snowflake".to_string(),
+        host: account,
+        port: 443,
+        username: user,
+        password: key,
+        database: Some(database.clone()),
+        ssl: true,
+        options,
+        ..ConnectionConfig::default()
+    };
+
+    let driver = Arc::new(SnowflakeDriver::new());
+    let session = driver.connect(&config).await?;
+
+    let schema = format!("QOREDB_{}", Uuid::new_v4().simple()).to_uppercase();
+    driver.create_database(session, &schema, None).await?;
+    let namespace = Namespace::with_schema(database.clone(), schema.clone());
+    assert!(
+        driver
+            .list_namespaces(session)
+            .await?
+            .iter()
+            .any(|ns| ns.schema.as_deref() == Some(schema.as_str())),
+        "the new schema must be listed"
+    );
+
+    driver
+        .execute(
+            session,
+            &format!(
+                "CREATE TABLE \"{database}\".\"{schema}\".\"people\" \
+                 (id NUMBER PRIMARY KEY, name VARCHAR, score FLOAT, born DATE, tags VARIANT)"
+            ),
+            QueryId::new(),
+        )
+        .await?;
+    let described = driver.describe_table(session, &namespace, "people").await?;
+    assert_eq!(
+        described.primary_key.as_deref(),
+        Some(&["ID".to_string()][..])
+    );
+
+    let mut row = RowData::new();
+    row.columns.insert("ID".into(), Value::Int(1));
+    row.columns.insert("NAME".into(), Value::Text("Ada".into()));
+    row.columns.insert("SCORE".into(), Value::Float(9.5));
+    row.columns
+        .insert("BORN".into(), Value::Text("1815-12-10".into()));
+    driver
+        .insert_row(session, &namespace, "people", &row)
+        .await?;
+
+    let preview = driver
+        .preview_table(session, &namespace, "people", 10)
+        .await?;
+    assert_eq!(preview.rows.len(), 1);
+    assert!(matches!(preview.rows[0].values[0], Value::Int(1)));
+    assert!(matches!(preview.rows[0].values[3], Value::Text(ref d) if d == "1815-12-10"));
+
+    let mut key = RowData::new();
+    key.columns.insert("ID".into(), Value::Int(1));
+    let mut update = RowData::new();
+    update
+        .columns
+        .insert("NAME".into(), Value::Text("Ada Lovelace".into()));
+    let updated = driver
+        .update_row(session, &namespace, "people", &key, &update)
+        .await?;
+    assert_eq!(updated.affected_rows, Some(1));
+    driver
+        .delete_row(session, &namespace, "people", &key)
+        .await?;
+
+    driver.drop_database(session, &schema).await?;
     driver.disconnect(session).await?;
     Ok(())
 }
