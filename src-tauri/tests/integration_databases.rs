@@ -2647,6 +2647,209 @@ async fn cassandra_e2e() -> EngineResult<()> {
     Ok(())
 }
 
+/// The type codec is the part of the CQL client a unit test cannot vouch for:
+/// every scalar and collection type goes in once as a CQL literal (encoded by
+/// the server) and once as a bound value (encoded by the client), and both rows
+/// must decode to the same thing.
+#[tokio::test]
+async fn cassandra_type_codec_round_trip() -> EngineResult<()> {
+    let Some((driver, session, _config)) = connect_or_skip(
+        connect_cassandra().await,
+        Service::Cassandra,
+        "cassandra_type_codec_round_trip",
+    )?
+    else {
+        return Ok(());
+    };
+    type_codec_round_trip(driver, session).await
+}
+
+#[tokio::test]
+async fn scylladb_type_codec_round_trip() -> EngineResult<()> {
+    let Some((driver, session, _config)) = connect_or_skip(
+        connect_scylladb().await,
+        Service::ScyllaDb,
+        "scylladb_type_codec_round_trip",
+    )?
+    else {
+        return Ok(());
+    };
+    type_codec_round_trip(driver, session).await
+}
+
+async fn type_codec_round_trip(
+    driver: Arc<CassandraDriver>,
+    session: SessionId,
+) -> EngineResult<()> {
+    let keyspace = format!("qoredb_{}", Uuid::new_v4().simple());
+    driver
+        .create_database(session, &keyspace, None)
+        .await
+        .expect("keyspace creation");
+    let namespace = Namespace {
+        database: keyspace.clone(),
+        schema: None,
+    };
+    let run = |cql: String| {
+        let driver = Arc::clone(&driver);
+        async move { driver.execute(session, &cql, QueryId::new()).await }
+    };
+
+    run(format!(
+        "CREATE TYPE \"{keyspace}\".address (street text, zip int)"
+    ))
+    .await?;
+    run(format!(
+        "CREATE TABLE \"{keyspace}\".kinds (id int PRIMARY KEY, \
+         c_ascii ascii, c_bigint bigint, c_blob blob, c_boolean boolean, \
+         c_decimal decimal, c_double double, c_float float, c_int int, \
+         c_timestamp timestamp, c_uuid uuid, c_text text, c_varint varint, \
+         c_timeuuid timeuuid, c_inet inet, c_date date, c_time time, \
+         c_smallint smallint, c_tinyint tinyint, c_duration duration, \
+         c_list list<int>, c_set set<text>, c_map map<text, int>, \
+         c_tuple tuple<int, text>, c_udt frozen<address>)"
+    ))
+    .await?;
+
+    let timeuuid = "5ba1c9a0-1f8b-11ee-be56-0242ac120002";
+    let uuid = "12345678-9abc-def0-1234-56789abcdef0";
+    run(format!(
+        "INSERT INTO \"{keyspace}\".kinds (id, c_ascii, c_bigint, c_blob, c_boolean, \
+         c_decimal, c_double, c_float, c_int, c_timestamp, c_uuid, c_text, c_varint, \
+         c_timeuuid, c_inet, c_date, c_time, c_smallint, c_tinyint, c_duration, \
+         c_list, c_set, c_map, c_tuple, c_udt) VALUES (1, 'plain', 9007199254740993, \
+         0xdeadbeef, true, 123.45, 1.5, -0.25, -7, '2023-11-14T22:13:20.123Z', {uuid}, \
+         'héllo', 1180591620717411303424, {timeuuid}, '10.0.0.1', '2024-02-29', \
+         '13:00:05.000000007', -2, -3, 1mo2d3ns, [1, 2], {{'a', 'b'}}, \
+         {{'k': 4}}, (5, 'five'), {{street: 'rue', zip: 75001}})"
+    ))
+    .await?;
+
+    let mut bound = RowData::new();
+    for (column, value) in [
+        ("id", Value::Int(2)),
+        ("c_ascii", Value::Text("plain".into())),
+        ("c_bigint", Value::Int(9007199254740993)),
+        ("c_blob", Value::Bytes(vec![0xde, 0xad, 0xbe, 0xef])),
+        ("c_boolean", Value::Bool(true)),
+        ("c_decimal", Value::Text("123.45".into())),
+        ("c_double", Value::Float(1.5)),
+        ("c_float", Value::Float(-0.25)),
+        ("c_int", Value::Int(-7)),
+        (
+            "c_timestamp",
+            Value::Text("2023-11-14T22:13:20.123Z".into()),
+        ),
+        ("c_uuid", Value::Text(uuid.into())),
+        ("c_text", Value::Text("héllo".into())),
+        ("c_varint", Value::Text("1180591620717411303424".into())),
+        ("c_timeuuid", Value::Text(timeuuid.into())),
+        ("c_inet", Value::Text("10.0.0.1".into())),
+        ("c_date", Value::Text("2024-02-29".into())),
+        ("c_time", Value::Text("13:00:05.000000007".into())),
+        ("c_smallint", Value::Int(-2)),
+        ("c_tinyint", Value::Int(-3)),
+        ("c_list", Value::Array(vec![Value::Int(1), Value::Int(2)])),
+        (
+            "c_set",
+            Value::Array(vec![Value::Text("a".into()), Value::Text("b".into())]),
+        ),
+        ("c_map", Value::Json(json!({ "k": 4 }))),
+    ] {
+        bound.columns.insert(column.to_string(), value);
+    }
+    driver
+        .insert_row(session, &namespace, "kinds", &bound)
+        .await?;
+
+    let result = run(format!(
+        "SELECT * FROM \"{keyspace}\".kinds WHERE id IN (1, 2)"
+    ))
+    .await?;
+    assert_eq!(result.rows.len(), 2);
+    let column = |name: &str| {
+        result
+            .columns
+            .iter()
+            .position(|c| c.name == name)
+            .unwrap_or_else(|| panic!("column {name}"))
+    };
+    let row = |id: i64| {
+        result
+            .rows
+            .iter()
+            .find(|r| matches!(r.values[column("id")], Value::Int(i) if i == id))
+            .unwrap_or_else(|| panic!("row {id}"))
+    };
+    let (literal, bound) = (row(1), row(2));
+
+    let expect = |name: &str, want: Value| {
+        let got = &literal.values[column(name)];
+        assert_eq!(
+            format!("{got:?}"),
+            format!("{want:?}"),
+            "{name} decoded from the server's encoding"
+        );
+    };
+    expect("c_ascii", Value::Text("plain".into()));
+    expect("c_bigint", Value::Int(9007199254740993));
+    expect("c_blob", Value::Bytes(vec![0xde, 0xad, 0xbe, 0xef]));
+    expect("c_boolean", Value::Bool(true));
+    expect("c_decimal", Value::Text("123.45".into()));
+    expect("c_double", Value::Float(1.5));
+    expect("c_float", Value::Float(-0.25));
+    expect("c_int", Value::Int(-7));
+    expect(
+        "c_timestamp",
+        Value::Text("2023-11-14T22:13:20.123Z".into()),
+    );
+    expect("c_uuid", Value::Text(uuid.into()));
+    expect("c_text", Value::Text("héllo".into()));
+    expect("c_varint", Value::Text("1180591620717411303424".into()));
+    expect("c_timeuuid", Value::Text(timeuuid.into()));
+    expect("c_inet", Value::Text("10.0.0.1".into()));
+    expect("c_date", Value::Text("2024-02-29".into()));
+    expect("c_time", Value::Text("13:00:05.000000007".into()));
+    expect("c_smallint", Value::Int(-2));
+    expect("c_tinyint", Value::Int(-3));
+    expect("c_duration", Value::Text("1mo2d3ns".into()));
+    expect("c_list", Value::Array(vec![Value::Int(1), Value::Int(2)]));
+    expect(
+        "c_set",
+        Value::Array(vec![Value::Text("a".into()), Value::Text("b".into())]),
+    );
+    expect("c_map", Value::Json(json!({ "k": 4 })));
+    expect(
+        "c_tuple",
+        Value::Array(vec![Value::Int(5), Value::Text("five".into())]),
+    );
+    expect(
+        "c_udt",
+        Value::Json(json!({ "street": "rue", "zip": 75001 })),
+    );
+
+    // Whatever the client encoded must read back exactly like the server's
+    // own encoding of the same literal.
+    for (i, info) in result.columns.iter().enumerate() {
+        if matches!(
+            info.name.as_str(),
+            "id" | "c_duration" | "c_tuple" | "c_udt"
+        ) {
+            continue;
+        }
+        assert_eq!(
+            format!("{:?}", bound.values[i]),
+            format!("{:?}", literal.values[i]),
+            "{} encoded by the client",
+            info.name
+        );
+    }
+
+    driver.drop_database(session, &keyspace).await?;
+    driver.disconnect(session).await?;
+    Ok(())
+}
+
 /// ScyllaDB runs the same client against the same protocol, with authentication
 /// on. Only the handshake differs, so this asserts the identity and one query
 /// rather than repeating the Cassandra pass.

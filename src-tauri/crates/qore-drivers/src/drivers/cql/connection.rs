@@ -19,7 +19,7 @@ use tokio::net::TcpStream;
 
 use super::frame::{
     Consistency, ERR_UNPREPARED, HEADER_LEN, Opcode, Reader, Writer, decode_error, decode_header,
-    encode_header, error_code,
+    encode_header, error_code, strip_body_prefix,
 };
 use super::value::{self, CqlType};
 
@@ -209,6 +209,7 @@ impl CqlConnection {
                 .map_err(|_| EngineError::connection_failed("Timed out reading a CQL body"))?
                 .map_err(|e| EngineError::connection_failed(format!("CQL read failed: {e}")))?;
         }
+        let body = strip_body_prefix(header.flags, &body)?.to_vec();
         Ok((header.opcode, body))
     }
 

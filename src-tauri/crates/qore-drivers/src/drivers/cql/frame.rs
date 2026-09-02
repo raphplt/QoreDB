@@ -121,8 +121,14 @@ pub fn encode_header(opcode: Opcode, stream: i16, body: &[u8]) -> Vec<u8> {
     out
 }
 
+const FLAG_COMPRESSED: u8 = 0x01;
+const FLAG_TRACING: u8 = 0x02;
+const FLAG_CUSTOM_PAYLOAD: u8 = 0x04;
+const FLAG_WARNING: u8 = 0x08;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Header {
+    pub flags: u8,
     pub opcode: Opcode,
     pub stream: i16,
     pub length: usize,
@@ -141,6 +147,12 @@ pub fn decode_header(bytes: &[u8; HEADER_LEN]) -> EngineResult<Header> {
             version & !RESPONSE_FLAG
         )));
     }
+    let flags = bytes[1];
+    if flags & FLAG_COMPRESSED != 0 {
+        return Err(EngineError::internal(
+            "Server sent a compressed CQL frame although compression was never negotiated",
+        ));
+    }
     let stream = i16::from_be_bytes([bytes[2], bytes[3]]);
     let opcode = Opcode::from_u8(bytes[4])?;
     let length = i32::from_be_bytes([bytes[5], bytes[6], bytes[7], bytes[8]]);
@@ -150,10 +162,33 @@ pub fn decode_header(bytes: &[u8; HEADER_LEN]) -> EngineResult<Header> {
         )));
     }
     Ok(Header {
+        flags,
         opcode,
         stream,
         length: length as usize,
     })
+}
+
+/// A server may prefix the body with a tracing id, a list of warnings and a
+/// custom payload, in that order, each announced by a header flag. None of
+/// them changes the meaning of the message, but the real body starts after
+/// them. ScyllaDB sets the warning flag on `CREATE KEYSPACE`, for instance.
+pub fn strip_body_prefix(flags: u8, body: &[u8]) -> EngineResult<&[u8]> {
+    let mut r = Reader::new(body);
+    if flags & FLAG_TRACING != 0 {
+        r.take(16)?;
+    }
+    if flags & FLAG_WARNING != 0 {
+        r.string_list()?;
+    }
+    if flags & FLAG_CUSTOM_PAYLOAD != 0 {
+        let n = r.u16()? as usize;
+        for _ in 0..n {
+            r.string()?;
+            r.bytes()?;
+        }
+    }
+    Ok(&body[body.len() - r.remaining()..])
 }
 
 /// Cursor over a response body. Every read is bounds-checked: a truncated or
@@ -359,6 +394,35 @@ mod tests {
         assert_eq!(header.opcode, Opcode::Query);
         assert_eq!(header.stream, 7);
         assert_eq!(header.length, body.len());
+    }
+
+    #[test]
+    fn flagged_prefixes_are_skipped_in_protocol_order() {
+        let mut w = Writer::new();
+        w.string("a warning");
+        let mut prefixed = [0x11u8; 16].to_vec();
+        prefixed.extend_from_slice(&1u16.to_be_bytes());
+        prefixed.extend_from_slice(&w.finish());
+        prefixed.extend_from_slice(&1u16.to_be_bytes());
+        prefixed.extend_from_slice(&3u16.to_be_bytes());
+        prefixed.extend_from_slice(b"key");
+        prefixed.extend_from_slice(&2i32.to_be_bytes());
+        prefixed.extend_from_slice(&[9, 9]);
+        prefixed.extend_from_slice(&[0xAA, 0xBB]);
+
+        let flags = FLAG_TRACING | FLAG_WARNING | FLAG_CUSTOM_PAYLOAD;
+        assert_eq!(strip_body_prefix(flags, &prefixed).unwrap(), &[0xAA, 0xBB]);
+        assert_eq!(strip_body_prefix(0, &[0xAA]).unwrap(), &[0xAA]);
+        assert!(strip_body_prefix(FLAG_WARNING, &[0x00]).is_err());
+    }
+
+    #[test]
+    fn a_compressed_frame_is_refused() {
+        let mut raw = [0u8; HEADER_LEN];
+        raw[0] = RESPONSE_FLAG | PROTOCOL_VERSION;
+        raw[1] = FLAG_COMPRESSED;
+        raw[4] = Opcode::Ready.as_u8();
+        assert!(decode_header(&raw).is_err());
     }
 
     #[test]

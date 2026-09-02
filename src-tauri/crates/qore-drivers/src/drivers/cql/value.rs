@@ -95,7 +95,12 @@ impl CqlType {
 pub fn read_type(r: &mut Reader<'_>) -> EngineResult<CqlType> {
     let id = r.u16()?;
     Ok(match id {
-        0x0000 => CqlType::Custom(r.string()?),
+        // `duration` only got its own id in protocol v5; a v4 server sends it
+        // as a custom type named after its Java marshaller.
+        0x0000 => match r.string()?.as_str() {
+            "org.apache.cassandra.db.marshal.DurationType" => CqlType::Duration,
+            class => CqlType::Custom(class.to_string()),
+        },
         0x0001 => CqlType::Ascii,
         0x0002 => CqlType::Bigint,
         0x0003 => CqlType::Blob,
@@ -1100,6 +1105,16 @@ mod tests {
         };
         assert!(encode(&udt, &Value::Text("{}".into())).is_err());
         assert!(encode(&CqlType::Duration, &Value::Text("1mo".into())).is_err());
+    }
+
+    #[test]
+    fn a_v4_server_sends_duration_as_a_custom_type() {
+        let class = "org.apache.cassandra.db.marshal.DurationType";
+        let mut bytes = 0u16.to_be_bytes().to_vec();
+        bytes.extend_from_slice(&(class.len() as u16).to_be_bytes());
+        bytes.extend_from_slice(class.as_bytes());
+        let ty = read_type(&mut Reader::new(&bytes)).unwrap();
+        assert!(matches!(ty, CqlType::Duration));
     }
 
     #[test]
