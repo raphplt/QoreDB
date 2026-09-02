@@ -235,6 +235,7 @@
     "showPassword": "パスワードを表示",
     "hidePassword": "パスワードを非表示",
     "database": "データベース",
+    "project": "プロジェクト",
     "databaseInitial": "初期データベース",
     "databaseIndex": "データベースインデックス (0-15)",
     "filePath": "データベースファイル",
@@ -385,6 +386,15 @@
       "warehouse": "ウェアハウス",
       "warehouseHint": "すべてのクエリで使用されるコンピュート。SHOW と DESCRIBE はなくても実行できます。",
       "role": "ロール（任意）"
+    },
+    "bigquery": {
+      "projectHint": "データセットを含むプロジェクト。空欄ならサービスアカウント自身のプロジェクトを使います。",
+      "serviceAccount": "サービスアカウントキー（JSON）",
+      "serviceAccountHint": "BigQuery Job User と Data Viewer のロールを持つサービスアカウントの JSON キーファイル。",
+      "location": "ロケーション（任意）",
+      "locationHint": "EU や us-central1 などのデータセットのロケーション。新規データセットとマルチリージョンクエリに使われます。",
+      "billingProject": "課金プロジェクト（任意）",
+      "billingProjectHint": "データを持つプロジェクトと異なる場合に、クエリ料金が請求されるプロジェクト。"
     },
     "search": {
       "authMode": "認証",
@@ -1694,7 +1704,10 @@
     "indexesHeader": "インデックス",
     "keyspace": "キースペース",
     "keyspaces": "キースペース",
-    "keyspacesHeader": "キースペース"
+    "keyspacesHeader": "キースペース",
+    "dataset": "データセット",
+    "datasets": "データセット",
+    "datasetsHeader": "データセット"
   },
   "createTable": {
     "title": "テーブルを作成",

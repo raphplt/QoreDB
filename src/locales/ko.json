@@ -235,6 +235,7 @@
     "showPassword": "비밀번호 표시",
     "hidePassword": "비밀번호 숨기기",
     "database": "데이터베이스",
+    "project": "프로젝트",
     "databaseInitial": "초기 데이터베이스",
     "databaseIndex": "데이터베이스 인덱스 (0-15)",
     "filePath": "데이터베이스 파일",
@@ -385,6 +386,15 @@
       "warehouse": "웨어하우스",
       "warehouseHint": "모든 쿼리에 사용되는 컴퓨팅. SHOW와 DESCRIBE는 없어도 실행됩니다.",
       "role": "역할(선택)"
+    },
+    "bigquery": {
+      "projectHint": "데이터세트가 있는 프로젝트. 비워 두면 서비스 계정 자체의 프로젝트를 사용합니다.",
+      "serviceAccount": "서비스 계정 키(JSON)",
+      "serviceAccountHint": "BigQuery Job User 및 Data Viewer 역할이 있는 서비스 계정의 JSON 키 파일.",
+      "location": "위치(선택)",
+      "locationHint": "EU 또는 us-central1 같은 데이터세트 위치. 새 데이터세트와 다중 리전 쿼리에 사용됩니다.",
+      "billingProject": "결제 프로젝트(선택)",
+      "billingProjectHint": "데이터가 있는 프로젝트와 다를 때 쿼리 비용이 청구되는 프로젝트."
     },
     "search": {
       "authMode": "인증",
@@ -1694,7 +1704,10 @@
     "indexesHeader": "인덱스",
     "keyspace": "키스페이스",
     "keyspaces": "키스페이스",
-    "keyspacesHeader": "키스페이스"
+    "keyspacesHeader": "키스페이스",
+    "dataset": "데이터세트",
+    "datasets": "데이터세트",
+    "datasetsHeader": "데이터세트"
   },
   "createTable": {
     "title": "테이블 만들기",

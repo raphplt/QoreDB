@@ -46,6 +46,7 @@ export function BasicSection({
   const isSearch =
     formData.driver === Driver.Elasticsearch || formData.driver === Driver.OpenSearch;
   const isSnowflake = formData.driver === Driver.Snowflake;
+  const isBigQuery = formData.driver === Driver.BigQuery;
   const driverMeta = getDriverMetadata(formData.driver);
   const isNtlm = isSqlServer && formData.mssqlAuthMode === 'windows_ntlm';
   const isIntegrated = isSqlServer && formData.mssqlAuthMode === 'windows_integrated';
@@ -148,8 +149,59 @@ export function BasicSection({
         <FileSection formData={formData} onChange={onChange} />
       )}
 
+      {isBigQuery && !hideConnectionFields && (
+        <div className="space-y-4">
+          <Field label={t('connection.project')} hint={t('connection.bigquery.projectHint')}>
+            <Input
+              placeholder="my-gcp-project"
+              value={formData.database}
+              onChange={e => onChange('database', e.target.value)}
+              spellCheck={false}
+            />
+          </Field>
+          <Field
+            label={t('connection.bigquery.serviceAccount')}
+            hint={t('connection.bigquery.serviceAccountHint')}
+            required
+          >
+            <Textarea
+              placeholder={'{ "type": "service_account", "project_id": "…", … }'}
+              value={formData.password}
+              onChange={e => onChange('password', e.target.value)}
+              spellCheck={false}
+              rows={5}
+              className="font-mono text-xs"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label={t('connection.bigquery.location')}
+              hint={t('connection.bigquery.locationHint')}
+            >
+              <Input
+                placeholder="EU"
+                value={formData.bigqueryLocation}
+                onChange={e => onChange('bigqueryLocation', e.target.value)}
+                spellCheck={false}
+              />
+            </Field>
+            <Field
+              label={t('connection.bigquery.billingProject')}
+              hint={t('connection.bigquery.billingProjectHint')}
+            >
+              <Input
+                placeholder="my-billing-project"
+                value={formData.bigqueryBillingProject}
+                onChange={e => onChange('bigqueryBillingProject', e.target.value)}
+                spellCheck={false}
+              />
+            </Field>
+          </div>
+        </div>
+      )}
+
       {/* Connection fields - hidden when URL mode provides them or for file-based drivers */}
-      {!hideConnectionFields && !isFileBased && (
+      {!hideConnectionFields && !isFileBased && !isBigQuery && (
         <>
           <div className="grid grid-cols-3 gap-4">
             <Field

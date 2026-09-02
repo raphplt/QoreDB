@@ -235,6 +235,7 @@
     "showPassword": "Mostrar senha",
     "hidePassword": "Ocultar senha",
     "database": "Banco de Dados",
+    "project": "Projeto",
     "databaseInitial": "Banco de Dados Inicial",
     "databaseIndex": "Índice do Banco de Dados (0-15)",
     "filePath": "Arquivo do Banco de Dados",
@@ -385,6 +386,15 @@
       "warehouse": "Warehouse",
       "warehouseHint": "Computação usada por cada consulta. SHOW e DESCRIBE funcionam sem ele.",
       "role": "Papel (opcional)"
+    },
+    "bigquery": {
+      "projectHint": "Projeto que contém os datasets. Deixe vazio para usar o do próprio service account.",
+      "serviceAccount": "Chave da conta de serviço (JSON)",
+      "serviceAccountHint": "O arquivo de chave JSON de uma conta de serviço com os papéis BigQuery Job User e Data Viewer.",
+      "location": "Localização (opcional)",
+      "locationHint": "Localização dos datasets, como EU ou us-central1, para novos datasets e consultas multirregionais.",
+      "billingProject": "Projeto faturado (opcional)",
+      "billingProjectHint": "Projeto cobrado pelas consultas quando difere daquele que contém os dados."
     },
     "search": {
       "authMode": "Autenticação",
@@ -1703,7 +1713,10 @@
     "indexesHeader": "Índices",
     "keyspace": "Keyspace",
     "keyspaces": "Keyspaces",
-    "keyspacesHeader": "KEYSPACES"
+    "keyspacesHeader": "KEYSPACES",
+    "dataset": "Dataset",
+    "datasets": "Datasets",
+    "datasetsHeader": "DATASETS"
   },
   "createTable": {
     "title": "Criar Tabela",

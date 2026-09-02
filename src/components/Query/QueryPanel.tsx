@@ -803,6 +803,13 @@ export function QueryPanel({
       case Driver.Sqlite:
         explainQuery = `EXPLAIN QUERY PLAN ${trimmed}`;
         break;
+      case Driver.Snowflake:
+        explainQuery = `EXPLAIN USING TABULAR ${trimmed}`;
+        break;
+      // The driver answers EXPLAIN with a dry run: bytes scanned, nothing billed.
+      case Driver.BigQuery:
+        explainQuery = `EXPLAIN ${trimmed}`;
+        break;
       default:
         explainQuery = `EXPLAIN (FORMAT JSON) ${trimmed}`;
         break;

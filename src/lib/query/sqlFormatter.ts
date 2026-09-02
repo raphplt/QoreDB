@@ -7,6 +7,7 @@ const DIALECT_MAP: Record<Driver, SqlLanguage> = {
   [Driver.Cassandra]: 'sql',
   [Driver.ScyllaDb]: 'sql',
   [Driver.Snowflake]: 'snowflake',
+  [Driver.BigQuery]: 'bigquery',
   [Driver.Postgres]: 'postgresql',
   [Driver.Mysql]: 'mysql',
   [Driver.Mongodb]: 'sql',

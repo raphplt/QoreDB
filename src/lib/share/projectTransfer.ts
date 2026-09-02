@@ -55,6 +55,7 @@ const TRANSFERABLE_DRIVERS = [
   'cassandra',
   'scylladb',
   'snowflake',
+  'bigquery',
 ] as const;
 
 type TransferableDriver = (typeof TRANSFERABLE_DRIVERS)[number];

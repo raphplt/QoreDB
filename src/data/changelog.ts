@@ -48,6 +48,12 @@ export const CHANGELOG: ChangelogEntry[] = [
         type: 'feature',
       },
       {
+        title: 'BigQuery',
+        description:
+          'Browse every project a service account can see, preview tables for free through storage reads, and ask Explain how many bytes a query would scan before running it.',
+        type: 'feature',
+      },
+      {
         title: 'Azure SQL and Synapse now verify the server certificate',
         description:
           'Forcing TLS on these endpoints no longer means trusting any certificate: connections default to full verification against the system trust store. An explicit SSL mode still wins.',

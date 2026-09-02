@@ -41,6 +41,7 @@ const DRIVER_DOC_SLUGS: Record<string, string> = {
   cassandra: 'cassandra',
   scylladb: 'cassandra',
   snowflake: 'snowflake',
+  bigquery: 'bigquery',
   clickhouse: 'clickhouse',
   elasticsearch: 'elasticsearch',
   opensearch: 'opensearch',

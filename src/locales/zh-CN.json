@@ -235,6 +235,7 @@
     "showPassword": "显示密码",
     "hidePassword": "隐藏密码",
     "database": "数据库",
+    "project": "项目",
     "databaseInitial": "初始数据库",
     "databaseIndex": "数据库索引（0-15）",
     "filePath": "数据库文件",
@@ -385,6 +386,15 @@
       "warehouse": "仓库",
       "warehouseHint": "每个查询使用的计算资源。SHOW 和 DESCRIBE 无需仓库即可运行。",
       "role": "角色（可选）"
+    },
+    "bigquery": {
+      "projectHint": "包含数据集的项目。留空则使用服务账号自身的项目。",
+      "serviceAccount": "服务账号密钥（JSON）",
+      "serviceAccountHint": "具有 BigQuery Job User 和 Data Viewer 角色的服务账号 JSON 密钥文件。",
+      "location": "位置（可选）",
+      "locationHint": "数据集位置，如 EU 或 us-central1，用于新建数据集和多区域查询。",
+      "billingProject": "结算项目（可选）",
+      "billingProjectHint": "当与存放数据的项目不同时，用于结算查询费用的项目。"
     },
     "search": {
       "authMode": "认证",
@@ -1694,7 +1704,10 @@
     "indexesHeader": "索引",
     "keyspace": "键空间",
     "keyspaces": "键空间",
-    "keyspacesHeader": "键空间"
+    "keyspacesHeader": "键空间",
+    "dataset": "数据集",
+    "datasets": "数据集",
+    "datasetsHeader": "数据集"
   },
   "createTable": {
     "title": "创建表",

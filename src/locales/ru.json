@@ -235,6 +235,7 @@
     "showPassword": "Показать пароль",
     "hidePassword": "Скрыть пароль",
     "database": "База данных",
+    "project": "Проект",
     "databaseInitial": "Начальная база данных",
     "databaseIndex": "Индекс базы данных (0-15)",
     "filePath": "Файл базы данных",
@@ -385,6 +386,15 @@
       "warehouse": "Warehouse",
       "warehouseHint": "Вычислительный ресурс для каждого запроса. SHOW и DESCRIBE работают без него.",
       "role": "Роль (необязательно)"
+    },
+    "bigquery": {
+      "projectHint": "Проект с датасетами. Оставьте пустым, чтобы использовать проект сервисного аккаунта.",
+      "serviceAccount": "Ключ сервисного аккаунта (JSON)",
+      "serviceAccountHint": "JSON-файл ключа сервисного аккаунта с ролями BigQuery Job User и Data Viewer.",
+      "location": "Расположение (необязательно)",
+      "locationHint": "Расположение датасетов, например EU или us-central1, для новых датасетов и мультирегиональных запросов.",
+      "billingProject": "Оплачиваемый проект (необязательно)",
+      "billingProjectHint": "Проект, с которого списывается стоимость запросов, если он отличается от проекта с данными."
     },
     "search": {
       "authMode": "Аутентификация",
@@ -1721,7 +1731,10 @@
     "indexesHeader": "Индексы",
     "keyspace": "Keyspace",
     "keyspaces": "Keyspaces",
-    "keyspacesHeader": "KEYSPACES"
+    "keyspacesHeader": "KEYSPACES",
+    "dataset": "Датасет",
+    "datasets": "Датасеты",
+    "datasetsHeader": "ДАТАСЕТЫ"
   },
   "createTable": {
     "title": "Создать таблицу",

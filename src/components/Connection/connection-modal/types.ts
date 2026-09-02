@@ -24,6 +24,9 @@ export interface ConnectionFormData {
   snowflakeAuthMode: SnowflakeAuthMode;
   snowflakeWarehouse: string;
   snowflakeRole: string;
+  /** BigQuery: dataset location and the project billed for queries. */
+  bigqueryLocation: string;
+  bigqueryBillingProject: string;
   /** Path to a custom CA certificate (PEM) for TLS verification. */
   sslCaCert: string;
   poolMaxConnections: number;
@@ -48,7 +51,7 @@ export interface ConnectionFormData {
   proxyConnectTimeoutSecs: number;
   useUrl: boolean;
   connectionUrl: string;
-  /** Driver options carried over from a parsed URL, plus the Snowflake fields above. */
+  /** Driver options carried over from a parsed URL, plus the warehouse fields above. */
   options: Record<string, string>;
 }
 
@@ -70,6 +73,8 @@ export const initialConnectionFormData: ConnectionFormData = {
   snowflakeAuthMode: 'key_pair',
   snowflakeWarehouse: '',
   snowflakeRole: '',
+  bigqueryLocation: '',
+  bigqueryBillingProject: '',
   sslCaCert: '',
   poolMaxConnections: 5,
   poolMinConnections: 0,

@@ -14,26 +14,38 @@ function isSqlServerDriver(driver: Driver): boolean {
   return [Driver.SqlServer, Driver.AzureSql, Driver.Synapse].includes(driver);
 }
 
-/** Snowflake has no dedicated config fields: its context rides in `options`. */
+/** The cloud warehouses have no dedicated config fields: their context rides in `options`. */
 function driverOptions(formData: ConnectionFormData): Record<string, string> | undefined {
   const options = { ...formData.options };
-  if (formData.driver === Driver.Snowflake) {
-    options.auth = formData.snowflakeAuthMode;
-    for (const [key, value] of [
-      ['warehouse', formData.snowflakeWarehouse],
-      ['role', formData.snowflakeRole],
-    ] as const) {
-      if (value.trim()) options[key] = value.trim();
-      else delete options[key];
-    }
+  const optional: [string, string][] =
+    formData.driver === Driver.Snowflake
+      ? [
+          ['warehouse', formData.snowflakeWarehouse],
+          ['role', formData.snowflakeRole],
+        ]
+      : formData.driver === Driver.BigQuery
+        ? [
+            ['location', formData.bigqueryLocation],
+            ['billing_project', formData.bigqueryBillingProject],
+          ]
+        : [];
+  if (formData.driver === Driver.Snowflake) options.auth = formData.snowflakeAuthMode;
+  for (const [key, value] of optional) {
+    if (value.trim()) options[key] = value.trim();
+    else delete options[key];
   }
   return Object.keys(options).length > 0 ? options : undefined;
+}
+
+/** BigQuery has no host to type: the API endpoint is fixed. */
+function hostFor(formData: ConnectionFormData): string {
+  return formData.driver === Driver.BigQuery ? 'bigquery.googleapis.com' : formData.host;
 }
 
 export function buildConnectionConfig(formData: ConnectionFormData): ConnectionConfig {
   return {
     driver: formData.driver,
-    host: formData.host,
+    host: hostFor(formData),
     port: formData.port,
     username: formData.username,
     password: formData.password,
@@ -95,7 +107,7 @@ export function buildSavedConnection(
     driver: formData.driver,
     environment: formData.environment as Environment,
     read_only: formData.readOnly,
-    host: formData.host,
+    host: hostFor(formData),
     port: formData.port,
     username: formData.username,
     database: formData.database || undefined,
@@ -189,18 +201,23 @@ export function getMissingRequirements(formData: ConnectionFormData): string[] {
   // Search engines (ES/OS) only need a username in basic-auth mode.
   const searchNeedsUser = isSearchDriver(formData.driver) && formData.searchAuthMode === 'basic';
   const isSnowflake = formData.driver === Driver.Snowflake;
-  // A Snowflake access token identifies the user by itself.
+  const isBigQuery = formData.driver === Driver.BigQuery;
+  // A Snowflake access token identifies the user by itself; so does a
+  // BigQuery service account.
   const snowflakeNeedsUser = isSnowflake && formData.snowflakeAuthMode === 'key_pair';
   const authRequired =
     !isDocumentDatabase(formData.driver) &&
     !isKeyValueDriver(formData.driver) &&
     (!isSearchDriver(formData.driver) || searchNeedsUser) &&
-    (!isSnowflake || snowflakeNeedsUser);
+    (!isSnowflake || snowflakeNeedsUser) &&
+    !isBigQuery;
   // SQLite and DuckDB are file-based: only the file path (stored in host) matters
   const isFileBased = formData.driver === Driver.Sqlite || formData.driver === Driver.Duckdb;
 
   if (isFileBased) {
     if (!formData.host) missing.push('connection.filePath');
+  } else if (isBigQuery) {
+    if (!formData.password.trim()) missing.push('connection.bigquery.serviceAccount');
   } else {
     if (!formData.host) missing.push('connection.host');
     if (!Number.isInteger(formData.port) || formData.port < 1 || formData.port > 65535) {

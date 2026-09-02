@@ -65,6 +65,8 @@ function mapDriverString(driver: string | undefined): Driver | undefined {
       return Driver.ScyllaDb;
     case 'snowflake':
       return Driver.Snowflake;
+    case 'bigquery':
+      return Driver.BigQuery;
     case 'cockroachdb':
     case 'cockroach':
       return Driver.Cockroachdb;
@@ -189,6 +191,8 @@ export function useConnectionForm(options: {
         snowflakeAuthMode: editConnection.options?.auth === 'token' ? 'token' : 'key_pair',
         snowflakeWarehouse: editConnection.options?.warehouse ?? '',
         snowflakeRole: editConnection.options?.role ?? '',
+        bigqueryLocation: editConnection.options?.location ?? '',
+        bigqueryBillingProject: editConnection.options?.billing_project ?? '',
         sslCaCert: editConnection.ssl_ca_cert ?? '',
         poolMaxConnections: editConnection.pool_max_connections ?? 5,
         poolMinConnections: editConnection.pool_min_connections ?? 0,
