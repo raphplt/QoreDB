@@ -73,6 +73,7 @@ wiremock = "0.6"
 default = ["all-drivers"]
 all-drivers = [
     "driver-azuresql",
+    "driver-bigquery",
     "driver-cassandra",
     "driver-clickhouse",
     "driver-cockroachdb",
@@ -106,6 +107,7 @@ all-drivers = [
     "driver-yugabytedb",
 ]
 driver-azuresql = ["driver-sqlserver"]
+driver-bigquery = ["dep:reqwest", "dep:jsonwebtoken", "dep:rsa", "dep:sha2"]
 driver-cassandra = ["dep:tokio-rustls", "dep:rustls-native-certs", "dep:rustls-pemfile"]
 driver-clickhouse = ["dep:reqwest"]
 driver-cockroachdb = ["sqlx-postgres"]

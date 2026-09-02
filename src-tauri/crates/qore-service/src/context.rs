@@ -7,6 +7,8 @@ use qore_core::DriverRegistry;
 use qore_drivers::drivers::cassandra::CassandraDriver;
 #[cfg(feature = "driver-snowflake")]
 use qore_drivers::drivers::snowflake::SnowflakeDriver;
+#[cfg(feature = "driver-bigquery")]
+use qore_drivers::drivers::bigquery::BigQueryDriver;
 #[cfg(feature = "driver-clickhouse")]
 use qore_drivers::drivers::clickhouse::ClickHouseDriver;
 #[cfg(feature = "driver-cockroachdb")]
@@ -146,6 +148,8 @@ impl ServiceContext {
         registry.register(Arc::new(CassandraDriver::scylladb()));
         #[cfg(feature = "driver-snowflake")]
         registry.register(Arc::new(SnowflakeDriver::new()));
+        #[cfg(feature = "driver-bigquery")]
+        registry.register(Arc::new(BigQueryDriver::new()));
         #[cfg(feature = "driver-clickhouse")]
         registry.register(Arc::new(ClickHouseDriver::new()));
         #[cfg(feature = "driver-elasticsearch")]

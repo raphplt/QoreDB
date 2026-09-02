@@ -45,6 +45,7 @@ tempfile = "3.24.0"
 default = ["all-drivers"]
 all-drivers = [
     "driver-azuresql",
+    "driver-bigquery",
     "driver-cassandra",
     "driver-clickhouse",
     "driver-cockroachdb",
@@ -78,6 +79,7 @@ all-drivers = [
     "driver-yugabytedb",
 ]
 driver-azuresql = ["qore-drivers/driver-azuresql"]
+driver-bigquery = ["qore-drivers/driver-bigquery"]
 driver-cassandra = ["qore-drivers/driver-cassandra"]
 driver-clickhouse = ["qore-drivers/driver-clickhouse"]
 driver-cockroachdb = ["qore-drivers/driver-cockroachdb"]
