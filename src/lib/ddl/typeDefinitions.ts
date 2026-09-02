@@ -170,6 +170,7 @@ const SQLSERVER_TYPES: ColumnType[] = [
 export const COLUMN_TYPES: Record<Driver, ColumnType[]> = {
   [Driver.Cassandra]: [],
   [Driver.ScyllaDb]: [],
+  [Driver.Snowflake]: [],
   [Driver.Postgres]: POSTGRES_TYPES,
   [Driver.Mysql]: MYSQL_TYPES,
   [Driver.Mongodb]: [],

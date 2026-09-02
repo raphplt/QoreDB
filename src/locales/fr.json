@@ -402,6 +402,19 @@
       "clusterPlaceholder": "ex. shard_cluster",
       "clusterHint": "Quand renseigné, les DDL (CREATE/DROP DATABASE/TABLE) utilisent ON CLUSTER pour se propager à toutes les répliques. Laisser vide pour une installation mono-nœud."
     },
+    "snowflake": {
+      "account": "Identifiant de compte",
+      "accountHint": "Votre identifiant de compte (myorg-myaccount, ou xy12345.eu-central-1) ou le nom d'hôte complet.",
+      "authMode": "Authentification",
+      "authKeyPair": "Paire de clés",
+      "authToken": "Jeton d'accès",
+      "privateKey": "Clé privée (PEM)",
+      "privateKeyHint": "Clé privée RSA non chiffrée dont la clé publique est enregistrée sur l'utilisateur (ALTER USER … SET RSA_PUBLIC_KEY).",
+      "token": "Jeton d'accès programmatique",
+      "warehouse": "Warehouse",
+      "warehouseHint": "Calcul utilisé par chaque requête. SHOW et DESCRIBE fonctionnent sans.",
+      "role": "Rôle (optionnel)"
+    },
     "search": {
       "authMode": "Authentification",
       "authNone": "Aucune",

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Driver } from '@/lib/connection/drivers';
-import type { Environment, MssqlAuthMode, SearchAuthMode } from '@/lib/tauri';
+import type { Environment, MssqlAuthMode, SearchAuthMode, SnowflakeAuthMode } from '@/lib/tauri';
 
 export interface ConnectionFormData {
   name: string;
@@ -20,6 +20,10 @@ export interface ConnectionFormData {
   clickhouseCluster: string;
   /** Auth mode for Elasticsearch / OpenSearch. */
   searchAuthMode: SearchAuthMode;
+  /** Snowflake: key pair signs a JWT, token is a programmatic access token. */
+  snowflakeAuthMode: SnowflakeAuthMode;
+  snowflakeWarehouse: string;
+  snowflakeRole: string;
   /** Path to a custom CA certificate (PEM) for TLS verification. */
   sslCaCert: string;
   poolMaxConnections: number;
@@ -44,7 +48,7 @@ export interface ConnectionFormData {
   proxyConnectTimeoutSecs: number;
   useUrl: boolean;
   connectionUrl: string;
-  /** Driver options carried over from a parsed URL; no field edits them. */
+  /** Driver options carried over from a parsed URL, plus the Snowflake fields above. */
   options: Record<string, string>;
 }
 
@@ -63,6 +67,9 @@ export const initialConnectionFormData: ConnectionFormData = {
   mssqlAuthMode: 'sql_password',
   clickhouseCluster: '',
   searchAuthMode: 'none',
+  snowflakeAuthMode: 'key_pair',
+  snowflakeWarehouse: '',
+  snowflakeRole: '',
   sslCaCert: '',
   poolMaxConnections: 5,
   poolMinConnections: 0,

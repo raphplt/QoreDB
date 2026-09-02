@@ -373,6 +373,19 @@
       "clusterPlaceholder": "напр. shard_cluster",
       "clusterHint": "Если задано, DDL-команды (CREATE/DROP DATABASE/TABLE) выполняются с ON CLUSTER и распространяются на все реплики. Оставьте пустым для одно-узловых установок."
     },
+    "snowflake": {
+      "account": "Идентификатор аккаунта",
+      "accountHint": "Идентификатор аккаунта (myorg-myaccount или xy12345.eu-central-1) либо полное имя хоста.",
+      "authMode": "Аутентификация",
+      "authKeyPair": "Пара ключей",
+      "authToken": "Токен доступа",
+      "privateKey": "Закрытый ключ (PEM)",
+      "privateKeyHint": "Незашифрованный закрытый ключ RSA, открытый ключ которого зарегистрирован у пользователя (ALTER USER … SET RSA_PUBLIC_KEY).",
+      "token": "Программный токен доступа",
+      "warehouse": "Warehouse",
+      "warehouseHint": "Вычислительный ресурс для каждого запроса. SHOW и DESCRIBE работают без него.",
+      "role": "Роль (необязательно)"
+    },
     "search": {
       "authMode": "Аутентификация",
       "authNone": "Нет",

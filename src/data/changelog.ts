@@ -42,6 +42,12 @@ export const CHANGELOG: ChangelogEntry[] = [
         type: 'feature',
       },
       {
+        title: 'Snowflake',
+        description:
+          'Browse and query Snowflake over its SQL API with key-pair or access-token authentication. Warehouse and role are set per connection, and cancelling a statement really stops it.',
+        type: 'feature',
+      },
+      {
         title: 'Azure SQL and Synapse now verify the server certificate',
         description:
           'Forcing TLS on these endpoints no longer means trusting any certificate: connections default to full verification against the system trust store. An explicit SSL mode still wins.',

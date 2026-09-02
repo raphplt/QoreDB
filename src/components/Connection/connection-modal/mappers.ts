@@ -14,6 +14,22 @@ function isSqlServerDriver(driver: Driver): boolean {
   return [Driver.SqlServer, Driver.AzureSql, Driver.Synapse].includes(driver);
 }
 
+/** Snowflake has no dedicated config fields: its context rides in `options`. */
+function driverOptions(formData: ConnectionFormData): Record<string, string> | undefined {
+  const options = { ...formData.options };
+  if (formData.driver === Driver.Snowflake) {
+    options.auth = formData.snowflakeAuthMode;
+    for (const [key, value] of [
+      ['warehouse', formData.snowflakeWarehouse],
+      ['role', formData.snowflakeRole],
+    ] as const) {
+      if (value.trim()) options[key] = value.trim();
+      else delete options[key];
+    }
+  }
+  return Object.keys(options).length > 0 ? options : undefined;
+}
+
 export function buildConnectionConfig(formData: ConnectionFormData): ConnectionConfig {
   return {
     driver: formData.driver,
@@ -31,7 +47,7 @@ export function buildConnectionConfig(formData: ConnectionFormData): ConnectionC
         : undefined,
     search_auth_mode: isSearchDriver(formData.driver) ? formData.searchAuthMode : undefined,
     ssl_ca_cert: formData.sslCaCert.trim() || undefined,
-    options: Object.keys(formData.options).length > 0 ? formData.options : undefined,
+    options: driverOptions(formData),
     pool_max_connections: formData.poolMaxConnections,
     pool_min_connections: formData.poolMinConnections,
     pool_acquire_timeout_secs: formData.poolAcquireTimeoutSecs,
@@ -92,7 +108,7 @@ export function buildSavedConnection(
         : undefined,
     search_auth_mode: isSearchDriver(formData.driver) ? formData.searchAuthMode : undefined,
     ssl_ca_cert: formData.sslCaCert.trim() || undefined,
-    options: Object.keys(formData.options).length > 0 ? formData.options : undefined,
+    options: driverOptions(formData),
     pool_max_connections: formData.poolMaxConnections,
     pool_min_connections: formData.poolMinConnections,
     pool_acquire_timeout_secs: formData.poolAcquireTimeoutSecs,
@@ -172,10 +188,14 @@ export function getMissingRequirements(formData: ConnectionFormData): string[] {
   // MongoDB and Redis often run without authentication in dev mode.
   // Search engines (ES/OS) only need a username in basic-auth mode.
   const searchNeedsUser = isSearchDriver(formData.driver) && formData.searchAuthMode === 'basic';
+  const isSnowflake = formData.driver === Driver.Snowflake;
+  // A Snowflake access token identifies the user by itself.
+  const snowflakeNeedsUser = isSnowflake && formData.snowflakeAuthMode === 'key_pair';
   const authRequired =
     !isDocumentDatabase(formData.driver) &&
     !isKeyValueDriver(formData.driver) &&
-    (!isSearchDriver(formData.driver) || searchNeedsUser);
+    (!isSearchDriver(formData.driver) || searchNeedsUser) &&
+    (!isSnowflake || snowflakeNeedsUser);
   // SQLite and DuckDB are file-based: only the file path (stored in host) matters
   const isFileBased = formData.driver === Driver.Sqlite || formData.driver === Driver.Duckdb;
 
@@ -199,6 +219,14 @@ export function getMissingRequirements(formData: ConnectionFormData): string[] {
       formData.username.includes('\\') ||
       formData.username.includes('@');
     if (!ntlmUsernameOk) missing.push('connection.mssql.ntlmUsernameInvalid');
+
+    if (isSnowflake && !formData.password.trim()) {
+      missing.push(
+        formData.snowflakeAuthMode === 'token'
+          ? 'connection.snowflake.token'
+          : 'connection.snowflake.privateKey'
+      );
+    }
   }
 
   if (formData.useSshTunnel) {

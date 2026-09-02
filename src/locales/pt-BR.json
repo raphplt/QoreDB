@@ -373,6 +373,19 @@
       "clusterPlaceholder": "ex. shard_cluster",
       "clusterHint": "Quando definido, os comandos DDL (CREATE/DROP DATABASE/TABLE) são emitidos com ON CLUSTER para se propagar a todas as réplicas. Deixe vazio para instalações de um único nó."
     },
+    "snowflake": {
+      "account": "Identificador da conta",
+      "accountHint": "Seu identificador de conta (myorg-myaccount ou xy12345.eu-central-1) ou o nome de host completo.",
+      "authMode": "Autenticação",
+      "authKeyPair": "Par de chaves",
+      "authToken": "Token de acesso",
+      "privateKey": "Chave privada (PEM)",
+      "privateKeyHint": "Chave privada RSA não criptografada cuja chave pública está registrada no usuário (ALTER USER … SET RSA_PUBLIC_KEY).",
+      "token": "Token de acesso programático",
+      "warehouse": "Warehouse",
+      "warehouseHint": "Computação usada por cada consulta. SHOW e DESCRIBE funcionam sem ele.",
+      "role": "Papel (opcional)"
+    },
     "search": {
       "authMode": "Autenticação",
       "authNone": "Nenhuma",

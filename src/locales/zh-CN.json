@@ -373,6 +373,19 @@
       "clusterPlaceholder": "例如 shard_cluster",
       "clusterHint": "设置后，DDL 语句（CREATE/DROP DATABASE/TABLE）将带 ON CLUSTER 执行并传播到所有副本。单节点安装请留空。"
     },
+    "snowflake": {
+      "account": "账户标识符",
+      "accountHint": "您的账户标识符（myorg-myaccount 或 xy12345.eu-central-1）或完整主机名。",
+      "authMode": "认证",
+      "authKeyPair": "密钥对",
+      "authToken": "访问令牌",
+      "privateKey": "私钥（PEM）",
+      "privateKeyHint": "未加密的 RSA 私钥，其公钥已注册到用户（ALTER USER … SET RSA_PUBLIC_KEY）。",
+      "token": "编程访问令牌",
+      "warehouse": "仓库",
+      "warehouseHint": "每个查询使用的计算资源。SHOW 和 DESCRIBE 无需仓库即可运行。",
+      "role": "角色（可选）"
+    },
     "search": {
       "authMode": "认证",
       "authNone": "无",

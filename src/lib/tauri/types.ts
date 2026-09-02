@@ -33,6 +33,8 @@ export interface ConnectionConfig {
 
 export type SearchAuthMode = 'none' | 'basic' | 'api_key' | 'bearer';
 
+export type SnowflakeAuthMode = 'key_pair' | 'token';
+
 export type ProxyType = 'http_connect' | 'socks5';
 
 export interface ProxyConfig {

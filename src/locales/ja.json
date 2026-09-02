@@ -373,6 +373,19 @@
       "clusterPlaceholder": "例: shard_cluster",
       "clusterHint": "指定すると、DDL（CREATE/DROP DATABASE/TABLE）が ON CLUSTER 付きで実行され、全レプリカに伝播します。単一ノード構成では空のままにします。"
     },
+    "snowflake": {
+      "account": "アカウント識別子",
+      "accountHint": "アカウント識別子（myorg-myaccount または xy12345.eu-central-1）か完全なホスト名。",
+      "authMode": "認証",
+      "authKeyPair": "キーペア",
+      "authToken": "アクセストークン",
+      "privateKey": "秘密鍵（PEM）",
+      "privateKeyHint": "公開鍵をユーザーに登録済みの、暗号化されていない RSA 秘密鍵（ALTER USER … SET RSA_PUBLIC_KEY）。",
+      "token": "プログラマティックアクセストークン",
+      "warehouse": "ウェアハウス",
+      "warehouseHint": "すべてのクエリで使用されるコンピュート。SHOW と DESCRIBE はなくても実行できます。",
+      "role": "ロール（任意）"
+    },
     "search": {
       "authMode": "認証",
       "authNone": "なし",
