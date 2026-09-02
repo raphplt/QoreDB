@@ -249,8 +249,9 @@ Deux écarts par rapport au plan, tranchés en écrivant :
   grille et l'onglet structure. Le DDL visuel est coupé par une palette de
   types vide, via `supportsVisualDdl`, plutôt qu'en désactivant tout le reste.
 
-Reste à faire : les icônes `cassandra.png` et `scylladb.png`, et l'exécution des
-tests contre les conteneurs, que le plan exige avant de considérer le codec fini.
+Reste à faire : l'exécution de `cassandra_e2e` et `scylladb_e2e` contre les
+conteneurs de `docker-compose.yml`, que le plan exige avant de considérer le
+codec fini. Les icônes sont livrées.
 
 ### Reste du driver
 
