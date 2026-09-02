@@ -307,6 +307,7 @@ enum ParamDialect {
     SqlServer,
     ClickHouse,
     Snowflake,
+    BigQuery,
 }
 
 impl ParamDialect {
@@ -321,6 +322,7 @@ impl ParamDialect {
             "sqlserver" | "mssql" | "azuresql" | "synapse" => Some(Self::SqlServer),
             "clickhouse" => Some(Self::ClickHouse),
             "snowflake" => Some(Self::Snowflake),
+            "bigquery" => Some(Self::BigQuery),
             _ => None,
         }
     }
@@ -334,6 +336,7 @@ impl ParamDialect {
             Self::SqlServer => "sqlserver",
             Self::ClickHouse => "clickhouse",
             Self::Snowflake => "snowflake",
+            Self::BigQuery => "bigquery",
         }
     }
 }
@@ -393,8 +396,8 @@ fn string_literal(raw: &str, dialect: ParamDialect) -> Result<String, ApiError> 
                 .collect::<String>();
             format!("CONVERT(X'{hex}' USING utf8mb4)")
         }
-        // Both honour backslash escapes inside a literal.
-        ParamDialect::ClickHouse | ParamDialect::Snowflake => {
+        // All three honour backslash escapes inside a literal.
+        ParamDialect::ClickHouse | ParamDialect::Snowflake | ParamDialect::BigQuery => {
             let escaped = raw.replace('\\', "\\\\").replace('\'', "\\'");
             format!("'{escaped}'")
         }

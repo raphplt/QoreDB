@@ -76,6 +76,7 @@ fn driver_label(d: Dialect) -> &'static str {
         Dialect::SqlServer => "SQL Server",
         Dialect::ClickHouse => "ClickHouse",
         Dialect::Snowflake => "Snowflake",
+        Dialect::BigQuery => "BigQuery",
     }
 }
 

@@ -6,8 +6,8 @@ use lru::LruCache;
 use sqlparser::{
     ast::{Query, Select, SetExpr, Statement},
     dialect::{
-        Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
-        SnowflakeDialect,
+        BigQueryDialect, Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect,
+        PostgreSqlDialect, SnowflakeDialect,
     },
     parser::Parser,
 };
@@ -325,6 +325,7 @@ fn dialect_for_driver(driver_id: &str) -> Box<dyn Dialect> {
         "duckdb" | "motherduck" => Box::new(DuckDbDialect {}),
         "sqlserver" | "mssql" | "azuresql" | "synapse" => Box::new(MsSqlDialect {}),
         "snowflake" => Box::new(SnowflakeDialect {}),
+        "bigquery" => Box::new(BigQueryDialect {}),
         _ => Box::new(GenericDialect {}),
     }
 }

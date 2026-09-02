@@ -9,6 +9,7 @@
 //! - [`sql::SqlCompiler`] — dialect-neutral traversal of the query AST
 //!   that delegates to a `&dyn DialectOps`.
 
+pub mod bigquery;
 pub mod duckdb;
 pub mod mssql;
 pub mod mysql;

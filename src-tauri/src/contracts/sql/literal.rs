@@ -17,11 +17,11 @@ pub fn escape_string_literal(dialect: Dialect, s: &str) -> String {
     for ch in s.chars() {
         match ch {
             '\'' => out.push_str("''"),
-            // MySQL, ClickHouse and Snowflake honor backslash escapes by
+            // MySQL, ClickHouse, Snowflake and BigQuery honor backslash escapes by
             // default; double them to keep the literal verbatim.
             '\\' if matches!(
                 dialect,
-                Dialect::MySql | Dialect::ClickHouse | Dialect::Snowflake
+                Dialect::MySql | Dialect::ClickHouse | Dialect::Snowflake | Dialect::BigQuery
             ) =>
             {
                 out.push_str("\\\\");

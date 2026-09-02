@@ -6,14 +6,14 @@
 //! variant resolves to a static [`DialectOps`] implementation that carries
 //! all per-dialect behaviour (quoting, placeholders, LIMIT/FETCH style,
 //! `ILIKE` support, …). Concrete implementations live in
-//! `compiler/{postgres,mysql,sqlite,mssql,duckdb,snowflake}.rs`.
+//! `compiler/{postgres,mysql,sqlite,mssql,duckdb,snowflake,bigquery}.rs`.
 //!
 //! **CockroachDB** is Postgres wire-compatible; pick [`Dialect::Postgres`]
 //! until a truly divergent feature requires its own variant.
 
 use crate::compiler::{
-    DialectOps, duckdb::DuckDbOps, mssql::SqlServerOps, mysql::MySqlOps, postgres::PostgresOps,
-    snowflake::SnowflakeOps, sqlite::SqliteOps,
+    DialectOps, bigquery::BigQueryOps, duckdb::DuckDbOps, mssql::SqlServerOps, mysql::MySqlOps,
+    postgres::PostgresOps, snowflake::SnowflakeOps, sqlite::SqliteOps,
 };
 
 /// Target SQL dialect for a compiled query.
@@ -25,6 +25,7 @@ pub enum Dialect {
     SqlServer,
     DuckDb,
     Snowflake,
+    BigQuery,
 }
 
 impl Dialect {
@@ -37,6 +38,7 @@ impl Dialect {
             Dialect::SqlServer => &SqlServerOps,
             Dialect::DuckDb => &DuckDbOps,
             Dialect::Snowflake => &SnowflakeOps,
+            Dialect::BigQuery => &BigQueryOps,
         }
     }
 
@@ -54,6 +56,7 @@ impl Dialect {
             "sqlserver" | "mssql" | "azuresql" | "synapse" => Some(Dialect::SqlServer),
             "duckdb" | "motherduck" => Some(Dialect::DuckDb),
             "snowflake" => Some(Dialect::Snowflake),
+            "bigquery" => Some(Dialect::BigQuery),
             _ => None,
         }
     }
