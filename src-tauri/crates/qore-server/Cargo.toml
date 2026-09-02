@@ -27,9 +27,9 @@ rand = "0.8"
 dirs = "5"
 sqlx = { workspace = true, features = ["sqlite"] }
 argon2 = "0.5"
-jsonwebtoken = "9"
+jsonwebtoken = { workspace = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-sha2 = "0.10"
+sha2 = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
@@ -59,6 +59,7 @@ driver-postgres = ["qore-service/driver-postgres"]
 driver-redis = ["qore-service/driver-redis"]
 driver-sqlite = ["qore-service/driver-sqlite"]
 driver-scylladb = ["qore-service/driver-scylladb"]
+driver-snowflake = ["qore-service/driver-snowflake"]
 driver-sqlserver = ["qore-service/driver-sqlserver"]
 driver-singlestore = ["qore-service/driver-singlestore"]
 driver-starrocks = ["qore-service/driver-starrocks"]

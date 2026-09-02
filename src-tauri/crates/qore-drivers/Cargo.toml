@@ -46,6 +46,11 @@ duckdb = { workspace = true, optional = true }
 # HTTP-backed ClickHouse and search drivers
 reqwest = { version = "0.12", optional = true, default-features = false, features = ["rustls-tls", "json", "gzip"] }
 
+# Key-pair JWT for the cloud warehouses (Snowflake, later BigQuery)
+jsonwebtoken = { workspace = true, optional = true }
+rsa = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+
 # TLS on a raw socket, for the hand-written CQL client
 tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
 rustls-native-certs = { version = "0.8", optional = true }
@@ -62,6 +67,7 @@ tauri = { version = "2", optional = true }
 
 [dev-dependencies]
 tempfile = "3.24.0"
+wiremock = "0.6"
 
 [features]
 default = ["all-drivers"]
@@ -91,6 +97,7 @@ all-drivers = [
     "driver-sqlserver",
     "driver-starrocks",
     "driver-singlestore",
+    "driver-snowflake",
     "driver-supabase",
     "driver-synapse",
     "driver-tidb",
@@ -123,6 +130,7 @@ driver-scylladb = ["driver-cassandra"]
 driver-sqlserver = ["dep:bb8", "dep:bb8-tiberius", "dep:tiberius", "dep:tokio-util"]
 driver-starrocks = ["sqlx-mysql"]
 driver-singlestore = ["sqlx-mysql"]
+driver-snowflake = ["dep:reqwest", "dep:jsonwebtoken", "dep:rsa", "dep:sha2"]
 driver-supabase = ["sqlx-postgres"]
 driver-synapse = ["driver-sqlserver"]
 driver-tidb = ["sqlx-mysql"]

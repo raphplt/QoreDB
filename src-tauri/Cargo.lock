@@ -5301,6 +5301,7 @@ dependencies = [
  "compact_str",
  "duckdb",
  "futures",
+ "jsonwebtoken",
  "mongodb",
  "percent-encoding",
  "qore-core",
@@ -5308,11 +5309,13 @@ dependencies = [
  "redis",
  "regex",
  "reqwest 0.12.28",
+ "rsa",
  "rust_decimal",
  "rustls-native-certs",
  "rustls-pemfile",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "tauri",
  "tempfile",
@@ -5323,6 +5326,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "uuid",
+ "wiremock",
 ]
 
 [[package]]

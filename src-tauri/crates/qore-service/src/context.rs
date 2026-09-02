@@ -5,6 +5,8 @@ use std::sync::Arc;
 use qore_core::DriverRegistry;
 #[cfg(any(feature = "driver-cassandra", feature = "driver-scylladb"))]
 use qore_drivers::drivers::cassandra::CassandraDriver;
+#[cfg(feature = "driver-snowflake")]
+use qore_drivers::drivers::snowflake::SnowflakeDriver;
 #[cfg(feature = "driver-clickhouse")]
 use qore_drivers::drivers::clickhouse::ClickHouseDriver;
 #[cfg(feature = "driver-cockroachdb")]
@@ -142,6 +144,8 @@ impl ServiceContext {
         registry.register(Arc::new(CassandraDriver::new()));
         #[cfg(feature = "driver-scylladb")]
         registry.register(Arc::new(CassandraDriver::scylladb()));
+        #[cfg(feature = "driver-snowflake")]
+        registry.register(Arc::new(SnowflakeDriver::new()));
         #[cfg(feature = "driver-clickhouse")]
         registry.register(Arc::new(ClickHouseDriver::new()));
         #[cfg(feature = "driver-elasticsearch")]

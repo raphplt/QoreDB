@@ -8,6 +8,10 @@ pub mod clickhouse;
 pub mod cockroachdb;
 #[cfg(any(feature = "driver-cassandra", feature = "driver-scylladb"))]
 pub mod cql;
+#[cfg(feature = "driver-snowflake")]
+pub mod snowflake;
+#[cfg(feature = "driver-snowflake")]
+pub mod warehouse_compat;
 #[cfg(feature = "driver-documentdb")]
 pub mod documentdb;
 #[cfg(feature = "driver-duckdb")]

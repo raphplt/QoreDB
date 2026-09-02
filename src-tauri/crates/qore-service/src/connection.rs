@@ -71,6 +71,9 @@ pub fn normalize_config(mut config: ConnectionConfig) -> Result<ConnectionConfig
     // basic-auth mode. None / api_key / bearer carry no username.
     let is_search = config.driver == "elasticsearch" || config.driver == "opensearch";
     let search_without_username = is_search && config.search_auth_mode.as_deref() != Some("basic");
+    // A Snowflake programmatic access token identifies the user by itself.
+    let snowflake_token = config.driver == "snowflake"
+        && config.options.get("auth").map(String::as_str) == Some("token");
 
     // Username is required for SQL databases but optional for MongoDB, file-based DBs, Redis,
     // SQL Server integrated authentication, and non-basic search auth.
@@ -81,6 +84,7 @@ pub fn normalize_config(mut config: ConnectionConfig) -> Result<ConnectionConfig
         && !is_redis
         && !is_mssql_integrated
         && !search_without_username
+        && !snowflake_token
     {
         return Err("Username is required".to_string());
     }

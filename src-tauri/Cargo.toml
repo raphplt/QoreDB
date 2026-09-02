@@ -37,6 +37,9 @@ base64 = "0.22"
 
 sqlparser = "0.60"
 url = "2"
+jsonwebtoken = "9"
+rsa = "0.9"
+sha2 = "0.10"
 percent-encoding = "2"
 
 tracing = "0.1"
@@ -142,7 +145,7 @@ keyring = { version = "3", features = [
 ] }
 argon2 = "0.5"
 rand = "0.8"
-sha2 = "0.10"
+sha2 = { workspace = true }
 flate2 = "1"
 tar = "0.4"
 
