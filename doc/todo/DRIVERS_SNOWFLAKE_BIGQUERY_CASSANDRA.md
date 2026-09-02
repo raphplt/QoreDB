@@ -249,9 +249,11 @@ Deux écarts par rapport au plan, tranchés en écrivant :
   grille et l'onglet structure. Le DDL visuel est coupé par une palette de
   types vide, via `supportsVisualDdl`, plutôt qu'en désactivant tout le reste.
 
-Reste à faire : l'exécution de `cassandra_e2e` et `scylladb_e2e` contre les
-conteneurs de `docker-compose.yml`, que le plan exige avant de considérer le
-codec fini. Les icônes sont livrées.
+État au 2 septembre 2026 : lot C clos. Les tests d'intégration ont tourné
+contre Cassandra 5 et ScyllaDB 6.2, y compris un aller-retour de chaque type
+scalaire et de collection dans les deux sens. Ils ont révélé deux écarts entre
+la spécification et les serveurs — `duration` envoyé comme type custom en v4,
+et le drapeau d'avertissement posé par ScyllaDB — corrigés depuis.
 
 ### Reste du driver
 
