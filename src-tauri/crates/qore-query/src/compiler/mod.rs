@@ -13,6 +13,7 @@ pub mod duckdb;
 pub mod mssql;
 pub mod mysql;
 pub mod postgres;
+pub mod snowflake;
 pub mod sql;
 pub mod sqlite;
 

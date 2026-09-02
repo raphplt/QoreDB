@@ -7,6 +7,7 @@ use sqlparser::{
     ast::{Query, Select, SetExpr, Statement},
     dialect::{
         Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, PostgreSqlDialect,
+        SnowflakeDialect,
     },
     parser::Parser,
 };
@@ -323,6 +324,7 @@ fn dialect_for_driver(driver_id: &str) -> Box<dyn Dialect> {
         }
         "duckdb" | "motherduck" => Box::new(DuckDbDialect {}),
         "sqlserver" | "mssql" | "azuresql" | "synapse" => Box::new(MsSqlDialect {}),
+        "snowflake" => Box::new(SnowflakeDialect {}),
         _ => Box::new(GenericDialect {}),
     }
 }
@@ -712,6 +714,15 @@ mod tests {
             assert!(analysis.is_mutation, "{driver}");
             assert!(analysis.is_dangerous, "{driver}: UPDATE without WHERE");
         }
+
+        // Snowflake's `QUALIFY` is not generic SQL; the statement must still be
+        // classified rather than rejected as unparseable.
+        let analysis = analyze_sql(
+            "snowflake",
+            "SELECT * FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1",
+        )
+        .expect("snowflake should parse");
+        assert!(!analysis.is_mutation);
 
         // Bracketed identifiers are T-SQL; the Azure identities must resolve to
         // the same parser as SQL Server, not to the generic fallback.

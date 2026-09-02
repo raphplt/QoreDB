@@ -14,6 +14,7 @@ pub enum Dialect {
     DuckDb,
     SqlServer,
     ClickHouse,
+    Snowflake,
 }
 
 impl Dialect {
@@ -27,6 +28,7 @@ impl Dialect {
             "duckdb" => Some(Dialect::DuckDb),
             "sqlserver" | "mssql" | "azuresql" | "synapse" => Some(Dialect::SqlServer),
             "clickhouse" => Some(Dialect::ClickHouse),
+            "snowflake" => Some(Dialect::Snowflake),
             _ => None,
         }
     }
@@ -35,7 +37,7 @@ impl Dialect {
         match self {
             Dialect::MySql | Dialect::ClickHouse => format!("`{}`", ident.replace('`', "``")),
             Dialect::SqlServer => format!("[{}]", ident.replace(']', "]]")),
-            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb => {
+            Dialect::Postgres | Dialect::Sqlite | Dialect::DuckDb | Dialect::Snowflake => {
                 format!("\"{}\"", ident.replace('"', "\"\""))
             }
         }
@@ -63,6 +65,7 @@ impl Dialect {
             Dialect::DuckDb => "NOW()",
             Dialect::SqlServer => "GETDATE()",
             Dialect::ClickHouse => "now()",
+            Dialect::Snowflake => "CURRENT_TIMESTAMP()",
         }
     }
 
@@ -95,6 +98,14 @@ impl Dialect {
                     format!("({body} = 0)")
                 } else {
                     format!("({body} = 1)")
+                }
+            }
+            Dialect::Snowflake => {
+                let body = format!("REGEXP_LIKE({col_sql}, {pat})");
+                if negate {
+                    format!("(NOT {body})")
+                } else {
+                    format!("({body})")
                 }
             }
             // SQLite REGEXP requires loading an extension; SQL Server has no
@@ -145,6 +156,9 @@ impl Dialect {
                 };
                 format!("({now} - {ch_fn}({n}))")
             }
+            Dialect::Snowflake => {
+                format!("DATEADD({}, -{n}, {now})", unit_word.to_uppercase())
+            }
         })
     }
 
@@ -158,6 +172,7 @@ impl Dialect {
             Dialect::Sqlite => format!("datetime('now', '-{ms} seconds' || '/1000.0')"),
             Dialect::SqlServer => format!("DATEADD(MILLISECOND, -{ms}, {now})"),
             Dialect::ClickHouse => format!("({now} - toIntervalMillisecond({ms}))"),
+            Dialect::Snowflake => format!("DATEADD(MILLISECOND, -{ms}, {now})"),
         })
     }
 

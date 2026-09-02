@@ -306,6 +306,7 @@ enum ParamDialect {
     DuckDb,
     SqlServer,
     ClickHouse,
+    Snowflake,
 }
 
 impl ParamDialect {
@@ -319,6 +320,7 @@ impl ParamDialect {
             "duckdb" | "motherduck" => Some(Self::DuckDb),
             "sqlserver" | "mssql" | "azuresql" | "synapse" => Some(Self::SqlServer),
             "clickhouse" => Some(Self::ClickHouse),
+            "snowflake" => Some(Self::Snowflake),
             _ => None,
         }
     }
@@ -331,6 +333,7 @@ impl ParamDialect {
             Self::DuckDb => "duckdb",
             Self::SqlServer => "sqlserver",
             Self::ClickHouse => "clickhouse",
+            Self::Snowflake => "snowflake",
         }
     }
 }
@@ -390,7 +393,8 @@ fn string_literal(raw: &str, dialect: ParamDialect) -> Result<String, ApiError> 
                 .collect::<String>();
             format!("CONVERT(X'{hex}' USING utf8mb4)")
         }
-        ParamDialect::ClickHouse => {
+        // Both honour backslash escapes inside a literal.
+        ParamDialect::ClickHouse | ParamDialect::Snowflake => {
             let escaped = raw.replace('\\', "\\\\").replace('\'', "\\'");
             format!("'{escaped}'")
         }
