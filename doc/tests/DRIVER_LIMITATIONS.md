@@ -196,8 +196,39 @@ renders in the grid without raising anything. Its unit tests are built from the
 wire encoding rather than from a round-trip through our own writer, and cover
 NULL against an empty blob, signed widths, `decimal` without `f64`, `varint`
 beyond `i64`, the 2^31 bias on `date`, the zigzag vints of `duration`,
-truncated UDTs and non-string map keys. They have not yet been run against a
-live cluster.
+truncated UDTs and non-string map keys. A round-trip of every scalar and
+collection type runs in `integration_databases.rs` against Cassandra 5 and
+ScyllaDB 6.2; it is what found that a v4 server sends `duration` as a custom
+type and that ScyllaDB sets the warning flag on `CREATE KEYSPACE`.
+
+## Snowflake
+
+Snowflake is driven through the SQL API v2 in
+`qore-drivers/src/drivers/snowflake/`, not through a native driver. The
+account identifier is the host; the API lives on port 443 and nothing else.
+
+Authentication is key-pair by default: the private key (PEM, unencrypted
+PKCS#8 or PKCS#1) is stored as the password, and the driver mints an RS256 JWT
+per hour with the public-key fingerprint Snowflake expects in the issuer. A
+programmatic access token is the second mode, sent as a bearer. Encrypted keys
+are refused with the `openssl pkcs8 -nocrypt` command that converts them.
+
+Warehouse, role and default schema travel in the connection `options`
+(`warehouse`, `role`, `schema`, plus `auth`); the API keeps no session, so
+`USE` does not stick and every statement carries its context. Every statement
+is submitted asynchronously and polled, which is what makes `cancel` real
+rather than best-effort, at the price of one extra round-trip.
+
+Introspection uses `SHOW SCHEMAS`, `SHOW TERSE OBJECTS`, `DESCRIBE TABLE` and
+`SHOW IMPORTED KEYS`, none of which needs a running warehouse. The row-count
+estimate comes from `INFORMATION_SCHEMA.TABLES` and is skipped silently when
+no warehouse answers. Results are capped at 200 000 rows.
+
+Not covered: transactions (no session), visual DDL, routines, streaming, SSH
+tunnels, and connection URLs. Result cells arrive as strings: `NUMBER` with a
+scale is kept as exact text, `TIMESTAMP_TZ` is rendered with its offset, and
+`VARIANT` is parsed back to JSON. The driver has been tested against a mock
+server only; no live account was available.
 
 ## MongoDB
 

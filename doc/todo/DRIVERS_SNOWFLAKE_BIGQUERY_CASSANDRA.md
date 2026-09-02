@@ -177,6 +177,25 @@ la stack `reqwest` déjà en place pour les drivers search.
   doit poser un `LIMIT` strict, ne jamais déclencher de scan implicite, et
   l'UI doit afficher le warehouse actif.
 
+État au 2 septembre 2026 : B1 est implémenté. Le socle partagé est
+`drivers/warehouse_compat.rs` (clé RSA, empreinte, signature RS256, client
+HTTPS) ; le driver vit dans `drivers/snowflake/`. Trois écarts par rapport au
+plan, tranchés en écrivant :
+
+- Pas de champ dédié sur `ConnectionConfig` : `warehouse`, `role`, `schema` et
+  le mode d'auth (`auth`) voyagent dans `options`, déjà porté par le vault, le
+  formulaire et l'URL. Un champ de plus aurait coûté 37 littéraux de test pour
+  un seul moteur.
+- Chaque requête est soumise avec `async=true` puis interrogée, y compris les
+  courtes : un aller-retour de plus, mais un handle dès le premier octet, donc
+  une annulation qui annule vraiment.
+- `ILIKE` existe bien sur Snowflake ; le dialecte l'active.
+
+Non vérifié contre un compte réel : le client est testé sur un serveur HTTP
+simulé (wiremock). `snowflake_e2e` tourne dès que
+`QOREDB_TEST_SNOWFLAKE_ACCOUNT` et ses voisins sont posés. L'icône
+`snowflake.png` reste à déposer.
+
 ### B2 — BigQuery
 
 Bâti sur `warehouse_compat` posé en B1. Client REST direct plutôt que
