@@ -10,11 +10,11 @@
 
 use qoredb_lib::engine::{
     drivers::{
-        cassandra::CassandraDriver, clickhouse::ClickHouseDriver, documentdb::DocumentDbDriver,
-        duckdb::DuckDbDriver, elasticsearch::ElasticsearchDriver, mongodb::MongoDriver,
-        mysql::MySqlDriver, planetscale::PlanetScaleDriver, postgres::PostgresDriver,
-        redis::RedisDriver, snowflake::SnowflakeDriver, sqlite::SqliteDriver,
-        sqlserver::SqlServerDriver,
+        bigquery::BigQueryDriver, cassandra::CassandraDriver, clickhouse::ClickHouseDriver,
+        documentdb::DocumentDbDriver, duckdb::DuckDbDriver, elasticsearch::ElasticsearchDriver,
+        mongodb::MongoDriver, mysql::MySqlDriver, planetscale::PlanetScaleDriver,
+        postgres::PostgresDriver, redis::RedisDriver, snowflake::SnowflakeDriver,
+        sqlite::SqliteDriver, sqlserver::SqlServerDriver,
     },
     error::{EngineError, EngineResult},
     traits::DataEngine,
@@ -68,6 +68,7 @@ enum Service {
     ClickHouse,
     Search,
     Snowflake,
+    BigQuery,
 }
 
 impl Service {
@@ -86,6 +87,7 @@ impl Service {
             Service::ClickHouse => "ClickHouse",
             Service::Search => "Elasticsearch",
             Service::Snowflake => "Snowflake",
+            Service::BigQuery => "BigQuery",
         }
     }
 
@@ -104,6 +106,7 @@ impl Service {
             Service::ClickHouse => "QOREDB_TEST_CLICKHOUSE_REQUIRED",
             Service::Search => "QOREDB_TEST_SEARCH_REQUIRED",
             Service::Snowflake => "QOREDB_TEST_SNOWFLAKE_REQUIRED",
+            Service::BigQuery => "QOREDB_TEST_BIGQUERY_REQUIRED",
         }
     }
 
@@ -2952,6 +2955,104 @@ async fn snowflake_e2e() -> EngineResult<()> {
         .await?;
 
     driver.drop_database(session, &schema).await?;
+    driver.disconnect(session).await?;
+    Ok(())
+}
+
+/// BigQuery has no container either: the test runs when
+/// `QOREDB_TEST_BIGQUERY_SERVICE_ACCOUNT_PATH` points at a key file, with
+/// `_PROJECT` and `_LOCATION` as optional overrides.
+#[tokio::test]
+async fn bigquery_e2e() -> EngineResult<()> {
+    let var = |name: &str| std::env::var(format!("QOREDB_TEST_BIGQUERY_{name}")).ok();
+    let Some(key_path) = var("SERVICE_ACCOUNT_PATH") else {
+        if Service::BigQuery.required() {
+            panic!(
+                "QOREDB_TEST_BIGQUERY_SERVICE_ACCOUNT_PATH must be set when BigQuery is required"
+            );
+        }
+        eprintln!("bigquery_e2e skipped: no service account configured");
+        return Ok(());
+    };
+    let key = std::fs::read_to_string(&key_path).expect("service account file");
+    let mut options = std::collections::HashMap::new();
+    if let Some(location) = var("LOCATION") {
+        options.insert("location".to_string(), location);
+    }
+    let config = ConnectionConfig {
+        driver: "bigquery".to_string(),
+        host: "bigquery.googleapis.com".to_string(),
+        port: 443,
+        password: key,
+        database: var("PROJECT"),
+        ssl: true,
+        options,
+        ..ConnectionConfig::default()
+    };
+
+    let driver = Arc::new(BigQueryDriver::new());
+    let session = driver.connect(&config).await?;
+    let project = driver
+        .list_namespaces(session)
+        .await?
+        .into_iter()
+        .next()
+        .map(|ns| ns.database)
+        .expect("at least one project");
+
+    let dataset = format!("qoredb_{}", Uuid::new_v4().simple());
+    driver.create_database(session, &dataset, None).await?;
+    let namespace = Namespace::with_schema(project.clone(), dataset.clone());
+    driver
+        .execute(
+            session,
+            &format!(
+                "CREATE TABLE `{project}`.`{dataset}`.`people` \
+                 (id INT64 NOT NULL, name STRING, score FLOAT64, tags ARRAY<STRING>, \
+                  PRIMARY KEY (id) NOT ENFORCED)"
+            ),
+            QueryId::new(),
+        )
+        .await?;
+    let described = driver.describe_table(session, &namespace, "people").await?;
+    assert_eq!(
+        described.primary_key.as_deref(),
+        Some(&["id".to_string()][..])
+    );
+    assert_eq!(described.columns[3].data_type, "ARRAY<STRING>");
+
+    let mut row = RowData::new();
+    row.columns.insert("id".into(), Value::Int(1));
+    row.columns.insert("name".into(), Value::Text("Ada".into()));
+    row.columns.insert("score".into(), Value::Float(9.5));
+    let inserted = driver
+        .insert_row(session, &namespace, "people", &row)
+        .await?;
+    assert_eq!(inserted.affected_rows, Some(1));
+
+    // The dry run reports a scan without running anything.
+    let explained = driver
+        .execute(
+            session,
+            &format!("EXPLAIN SELECT name FROM `{project}`.`{dataset}`.`people`"),
+            QueryId::new(),
+        )
+        .await?;
+    assert_eq!(explained.columns[0].name.as_str(), "total_bytes_processed");
+
+    let preview = driver
+        .preview_table(session, &namespace, "people", 10)
+        .await?;
+    assert_eq!(preview.rows.len(), 1);
+    assert!(matches!(preview.rows[0].values[1], Value::Text(ref n) if n == "Ada"));
+
+    let mut key = RowData::new();
+    key.columns.insert("id".into(), Value::Int(1));
+    driver
+        .delete_row(session, &namespace, "people", &key)
+        .await?;
+
+    driver.drop_database(session, &dataset).await?;
     driver.disconnect(session).await?;
     Ok(())
 }
