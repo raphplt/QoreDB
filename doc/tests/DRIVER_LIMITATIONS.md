@@ -230,6 +230,32 @@ scale is kept as exact text, `TIMESTAMP_TZ` is rendered with its offset, and
 `VARIANT` is parsed back to JSON. The driver has been tested against a mock
 server only; no live account was available.
 
+## BigQuery
+
+BigQuery is driven through its REST API in `qore-drivers/src/drivers/bigquery/`,
+on the same `warehouse_compat` base as Snowflake. The password holds the
+service account's JSON key; its private key signs a JWT that Google trades for
+an hourly access token. There is no host to configure.
+
+`Namespace.database` is the project and `schema` the dataset. With no project
+on the connection the service account's own is used, and `list_namespaces`
+walks every project the account can list, up to fifty. The billing project
+and the location travel in the connection `options` (`billing_project`,
+`location`).
+
+Queries start with a two-second wait so that a job id exists early; longer
+ones are polled and their pages walked. `cancel` calls `jobs.cancel`.
+`preview_table`, and `query_table` without filter, search or sort, read
+through `tabledata.list`, which bills nothing and returns the row count.
+`EXPLAIN <query>` runs a dry run and answers with the bytes the query would
+scan and whether the cache would serve it. Results are capped at 200 000 rows.
+
+Not covered: transactions, visual DDL, routines, streaming, SSH tunnels, and
+connection URLs. `REPEATED` fields come back as arrays and `RECORD` fields as
+JSON objects; `TIMESTAMP` cells, which arrive as epoch seconds sometimes in
+exponent form, keep microsecond precision. The driver has been tested against
+a mock server only; no live project was available.
+
 ## MongoDB
 
 - Query execution supports `find` with simple JSON payloads and a dedicated

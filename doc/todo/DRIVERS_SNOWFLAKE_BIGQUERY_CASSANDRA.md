@@ -217,6 +217,21 @@ Bâti sur `warehouse_compat` posé en B1. Client REST direct plutôt que
   le fait correctement aujourd'hui.
 - Non couvert en v1 : transactions, DDL visuel.
 
+État au 2 septembre 2026 : B2 est implémenté dans `drivers/bigquery/`, sur
+`warehouse_compat`. Le multi-projet est en place (`projects.list` puis les
+datasets de chacun, plafonné à cinquante projets). Deux écarts :
+
+- Le dry run répond au bouton Explain — `EXPLAIN <requête>` est intercepté par
+  le driver et renvoie les octets qui seraient lus et l'état du cache — plutôt
+  que d'être branché sur l'`InterceptorPipeline` avant chaque exécution. Le
+  branchement automatique reste à faire ; il touche l'app, pas le driver.
+- Le projet de facturation et l'emplacement voyagent dans `options`
+  (`billing_project`, `location`), comme le contexte Snowflake.
+
+Non vérifié contre un projet réel : client testé sur wiremock ;
+`bigquery_e2e` tourne dès que `QOREDB_TEST_BIGQUERY_SERVICE_ACCOUNT_PATH` est
+posé. L'icône `bigquery.png` reste à déposer.
+
 ---
 
 ## Lot C — Cassandra + ScyllaDB

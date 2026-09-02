@@ -27,6 +27,7 @@
 - [x] **Apache Doris** — Analytics OLAP via le protocole MySQL _(v0.1.39)_
 - [x] **Azure Synapse** — Entrepôt T-SQL, TLS forcé _(v0.1.39)_
 - [x] **Snowflake** — Entrepôt cloud via la SQL API v2, auth par paire de clés _(v0.1.39)_
+- [x] **BigQuery** — Entrepôt Google via l'API REST, compte de service, dry run _(v0.1.39)_
 
 ### Time-Series
 
@@ -68,7 +69,6 @@
 ### Search / Analytics
 
 - [ ] **Apache Druid** — Real-time analytics
-- [ ] **BigQuery** — Entrepôt Google, sur le socle Snowflake
 - [ ] **Amazon Redshift** — Protocole PostgreSQL, introspection divergente
 
 ### SQL Relationnel
