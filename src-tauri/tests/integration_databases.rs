@@ -2423,6 +2423,9 @@ async fn azure_sql_wire_compatible_a1_e2e() -> EngineResult<()> {
     ] {
         let config = ConnectionConfig {
             driver: id.to_string(),
+            // The local SQL Server stand-in has a self-signed certificate.
+            ssl: true,
+            ssl_mode: Some("require".to_string()),
             ..config.clone()
         };
         let session = driver.connect(&config).await?;
@@ -2975,6 +2978,13 @@ async fn bigquery_e2e() -> EngineResult<()> {
         return Ok(());
     };
     let key = std::fs::read_to_string(&key_path).expect("service account file");
+    let project = var("PROJECT").unwrap_or_else(|| {
+        serde_json::from_str::<serde_json::Value>(&key)
+            .expect("valid service account JSON")["project_id"]
+            .as_str()
+            .expect("service account project_id")
+            .to_string()
+    });
     let mut options = std::collections::HashMap::new();
     if let Some(location) = var("LOCATION") {
         options.insert("location".to_string(), location);
@@ -2984,7 +2994,7 @@ async fn bigquery_e2e() -> EngineResult<()> {
         host: "bigquery.googleapis.com".to_string(),
         port: 443,
         password: key,
-        database: var("PROJECT"),
+        database: Some(project.clone()),
         ssl: true,
         options,
         ..ConnectionConfig::default()
@@ -2992,17 +3002,10 @@ async fn bigquery_e2e() -> EngineResult<()> {
 
     let driver = Arc::new(BigQueryDriver::new());
     let session = driver.connect(&config).await?;
-    let project = driver
-        .list_namespaces(session)
-        .await?
-        .into_iter()
-        .next()
-        .map(|ns| ns.database)
-        .expect("at least one project");
-
     let dataset = format!("qoredb_{}", Uuid::new_v4().simple());
     driver.create_database(session, &dataset, None).await?;
     let namespace = Namespace::with_schema(project.clone(), dataset.clone());
+    assert!(driver.list_namespaces(session).await?.contains(&namespace));
     driver
         .execute(
             session,

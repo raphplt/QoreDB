@@ -1121,6 +1121,12 @@
     "unknownConnection": "Unbekannte Verbindung"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "BigQuery-Schätzung",
+      "bytes": "Geschätzte gelesene Daten: {{bytes}} Byte.",
+      "unknown": "Das Lesevolumen ist für diese Abfrage nicht verfügbar.",
+      "hint": "Diese Schätzung ist kein Abrechnungslimit. Skripte und externe Tabellen können mehr Daten lesen."
+    },
     "run": "Ausführen",
     "running": "Wird ausgeführt…",
     "stop": "Stopp",

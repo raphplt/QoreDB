@@ -250,6 +250,14 @@ through `tabledata.list`, which bills nothing and returns the row count.
 `EXPLAIN <query>` runs a dry run and answers with the bytes the query would
 scan and whether the cache would serve it. Results are capped at 200 000 rows.
 
+The query editor requests a dry run through the existing query/interceptor path,
+shows the scan estimate and waits for confirmation before submitting the original
+query. A dry-run error stops that execution; missing byte counts are shown as
+unknown. This applies to editor queries, not notebooks, exports, grid operations
+or headless clients, which can request `EXPLAIN` explicitly. This is not a billing
+cap: [Google documents partial estimates for scripts](https://docs.cloud.google.com/bigquery/docs/multi-statement-queries)
+and [external sources](https://docs.cloud.google.com/bigquery/docs/running-queries).
+
 Not covered: transactions, visual DDL, routines, streaming, SSH tunnels, and
 connection URLs. `REPEATED` fields come back as arrays and `RECORD` fields as
 JSON objects; `TIMESTAMP` cells, which arrive as epoch seconds sometimes in

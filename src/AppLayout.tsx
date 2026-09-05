@@ -1498,6 +1498,7 @@ function AppContent({
             readOnly={activeConnection?.read_only || false}
             connectionName={activeConnection?.name}
             connectionDatabase={activeConnection?.database}
+            connectionWarehouse={activeConnection?.options?.warehouse}
             activeNamespace={activeTab.namespace}
             initialQuery={queryDrafts[activeTab.id] ?? activeTab.initialQuery}
             onSchemaChange={onSchemaChange}

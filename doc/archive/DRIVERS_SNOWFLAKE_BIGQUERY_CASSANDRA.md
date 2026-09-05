@@ -1,7 +1,36 @@
-# Plan — Snowflake, BigQuery, Cassandra/ScyllaDB (+ batch wire-compatible)
+# Snowflake, BigQuery, Cassandra/ScyllaDB — bilan de livraison
 
-> Plan de livraison pour trois nouvelles familles de moteurs et un lot de drivers
-> dérivés. Complète `doc/todo/DATABASES.md`, qui reste la liste de référence.
+> Archivé le 5 septembre 2026. Les lots A1, B1, B2 et C sont implémentés.
+> Les extensions optionnelles A2 et Amazon Keyspaces restent suivies dans
+> [DATABASES.md](../todo/DATABASES.md).
+
+## Vérification finale — 5 septembre 2026
+
+| Point | État constaté |
+| --- | --- |
+| A1 : neuf identités compatibles | Implémentées ; tests de protocole sur MySQL, PostgreSQL, Redis et SQL Server locaux |
+| Snowflake | Client et dialecte testés sur serveur HTTP simulé ; icône présente ; warehouse configuré affiché dans la barre de l’éditeur |
+| BigQuery | Client et dialecte testés sur serveur HTTP simulé ; icône présente ; estimation automatique et confirmation avant exécution dans l’éditeur |
+| Cassandra / ScyllaDB | Quatre tests réels réussis sur Cassandra 5 et ScyllaDB 6.2, dont les allers-retours de types |
+| Comptes cloud réels | Non disponibles : les tests Snowflake/BigQuery sont explicitement sautés |
+| Redshift, QuestDB, Quickwit, Amazon Keyspaces | Extensions optionnelles non implémentées, conservées dans la feuille de route |
+
+L’estimation automatique BigQuery réutilise `EXPLAIN` et le chemin existant
+`execute_query` / `InterceptorPipeline`. Une erreur de dry run empêche
+l’exécution ; une estimation absente est affichée comme inconnue. La
+confirmation concerne la requête et le namespace estimés. Les autres points
+d’entrée (notebooks, exports, grille, CLI/MCP) gardent le dry run explicite.
+Ce mécanisme n’impose pas de plafond de facturation.
+
+Deux corrections de tests accompagnent cette finalisation : le test Azure
+utilise explicitement le TLS sans vérification pour le certificat autosigné
+local, et le test BigQuery crée et interroge son dataset dans le même projet,
+sans choisir arbitrairement le premier projet visible.
+
+Voir le [bilan des tests](../tests/DRIVERS_VALIDATION_2026-09-05.md) pour les
+commandes, les limites et les conditions de reproduction.
+
+Le texte ci-dessous conserve le plan initial et ses décisions d’implémentation.
 
 ---
 
@@ -194,7 +223,7 @@ plan, tranchés en écrivant :
 Non vérifié contre un compte réel : le client est testé sur un serveur HTTP
 simulé (wiremock). `snowflake_e2e` tourne dès que
 `QOREDB_TEST_SNOWFLAKE_ACCOUNT` et ses voisins sont posés. L'icône
-`snowflake.png` reste à déposer.
+`snowflake.png` est présente dans `public/databases/`.
 
 ### B2 — BigQuery
 
@@ -224,13 +253,14 @@ datasets de chacun, plafonné à cinquante projets). Deux écarts :
 - Le dry run répond au bouton Explain — `EXPLAIN <requête>` est intercepté par
   le driver et renvoie les octets qui seraient lus et l'état du cache — plutôt
   que d'être branché sur l'`InterceptorPipeline` avant chaque exécution. Le
-  branchement automatique reste à faire ; il touche l'app, pas le driver.
+  branchement automatique dans l’éditeur a été terminé le 5 septembre 2026 ;
+  il réutilise ce chemin et laisse les autres points d’entrée en mode explicite.
 - Le projet de facturation et l'emplacement voyagent dans `options`
   (`billing_project`, `location`), comme le contexte Snowflake.
 
 Non vérifié contre un projet réel : client testé sur wiremock ;
 `bigquery_e2e` tourne dès que `QOREDB_TEST_BIGQUERY_SERVICE_ACCOUNT_PATH` est
-posé. L'icône `bigquery.png` reste à déposer.
+posé. L'icône `bigquery.png` est présente dans `public/databases/`.
 
 ---
 

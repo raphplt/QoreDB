@@ -123,8 +123,10 @@ fn pk_predicate(binder: &mut Binder, primary_key: &RowData) -> EngineResult<Stri
 /// question the button asks: what would this cost?
 fn explain_target(query: &str) -> Option<&str> {
     let trimmed = query.trim_start();
-    let upper = trimmed.get(..8)?.to_ascii_uppercase();
-    (upper == "EXPLAIN ").then(|| trimmed[8..].trim_start())
+    let keyword = trimmed.get(..7)?;
+    let rest = trimmed.get(7..)?;
+    (keyword.eq_ignore_ascii_case("EXPLAIN") && rest.starts_with(char::is_whitespace))
+        .then(|| rest.trim_start())
 }
 
 impl BigQueryDriver {
@@ -729,6 +731,56 @@ impl DataEngine for BigQueryDriver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wiremock::matchers::{body_partial_json, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn explain_only_dry_runs_in_the_selected_namespace_without_polling() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "access_token": "test-token", "expires_in": 3600
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/bigquery/v2/projects/bill/queries"))
+            .and(body_partial_json(serde_json::json!({
+                "query": "SELECT * FROM orders",
+                "dryRun": true,
+                "useLegacySql": false,
+                "defaultDataset": {"projectId": "data-project", "datasetId": "sales"}
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jobComplete": true, "totalBytesProcessed": "1024"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let driver = BigQueryDriver::new();
+        let session = SessionId::new();
+        driver
+            .sessions
+            .write()
+            .await
+            .insert(session, Arc::new(BigQueryClient::for_tests(&server.uri())));
+        let result = driver
+            .execute_in_namespace(
+                session,
+                Some(Namespace::with_schema("data-project", "sales")),
+                "EXPLAIN\nSELECT * FROM orders",
+                QueryId::new(),
+            )
+            .await
+            .unwrap();
+        assert!(matches!(result.rows[0].values[0], Value::Int(1024)));
+        assert!(matches!(result.rows[0].values[1], Value::Null));
+        assert!(driver.queries.lock().await.is_empty());
+        assert_eq!(server.received_requests().await.unwrap().len(), 2);
+    }
 
     #[test]
     fn identifiers_are_backticked_and_fully_qualified() {
@@ -742,7 +794,8 @@ mod tests {
     #[test]
     fn explain_is_recognised_case_insensitively() {
         assert_eq!(explain_target("explain SELECT 1"), Some("SELECT 1"));
-        assert_eq!(explain_target("  EXPLAIN\tSELECT 1"), None);
+        assert_eq!(explain_target("  EXPLAIN\tSELECT 1"), Some("SELECT 1"));
+        assert_eq!(explain_target("EXPLAIN\nSELECT 1"), Some("SELECT 1"));
         assert_eq!(explain_target("EXPLAINED"), None);
         assert_eq!(explain_target("SELECT 1"), None);
     }

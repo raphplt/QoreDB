@@ -1112,6 +1112,12 @@
     "unknownConnection": "未知连接"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "BigQuery 扫描估算",
+      "bytes": "预计扫描数据量：{{bytes}} 字节。",
+      "unknown": "无法获取此查询的扫描量。",
+      "hint": "此估算并非计费上限。脚本和外部表可能扫描更多数据。"
+    },
     "run": "运行",
     "running": "运行中…",
     "stop": "停止",

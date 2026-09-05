@@ -50,7 +50,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         title: 'BigQuery',
         description:
-          'Browse every project a service account can see, preview tables for free through storage reads, and ask Explain how many bytes a query would scan before running it.',
+          'Browse every project a service account can see, preview tables for free through storage reads, and review an automatic scan estimate before running editor queries. Explain remains available for a manual dry run.',
         type: 'feature',
       },
       {

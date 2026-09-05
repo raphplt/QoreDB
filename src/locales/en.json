@@ -1156,6 +1156,12 @@
     "unknownConnection": "Unknown connection"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "BigQuery scan estimate",
+      "bytes": "Estimated data scanned: {{bytes}} bytes.",
+      "unknown": "The scan volume is unavailable for this query.",
+      "hint": "This estimate is not a billing limit. Scripts and external tables may scan more data."
+    },
     "run": "Run",
     "running": "Running...",
     "stop": "Stop",

@@ -174,7 +174,7 @@ DBeaver, pgAdmin, phpMyAdmin do the job — but they feel slow, dated, and full 
 - **Azure SQL and Azure Synapse** — SQL Server protocol support with TLS forced on connect; Synapse keeps mutation and visual DDL actions disabled across dedicated and serverless endpoints
 - **Cassandra and ScyllaDB** — Wide-column browsing over a CQL client written against the protocol, with native cursor pagination, row editing that requires the full primary key, and guards against ring-wide scans
 - **Snowflake** — Cloud warehouse access over the SQL API with key-pair JWT or access-token authentication, warehouse and role per connection, and real statement cancellation
-- **BigQuery** — Service-account access over the REST API across every project the account can see, free previews through table storage reads, and Explain answered by a dry run that reports the bytes a query would scan
+- **BigQuery** — Service-account access over the REST API across every project the account can see, free previews through table storage reads, and an automatic scan estimate with confirmation before editor queries run
 </details>
 
 <details>

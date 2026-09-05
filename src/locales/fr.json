@@ -1156,6 +1156,12 @@
     "unknownConnection": "Connexion inconnue"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "Estimation BigQuery",
+      "bytes": "Volume estimé à analyser : {{bytes}} octets.",
+      "unknown": "Le volume à analyser est indisponible pour cette requête.",
+      "hint": "Cette estimation ne plafonne pas la facturation. Les scripts et les tables externes peuvent analyser davantage de données."
+    },
     "run": "Exécuter",
     "running": "En cours...",
     "stop": "Arrêter",

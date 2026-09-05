@@ -1112,6 +1112,12 @@
     "unknownConnection": "알 수 없는 연결"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "BigQuery 스캔 예상량",
+      "bytes": "예상 데이터 스캔량: {{bytes}}바이트.",
+      "unknown": "이 쿼리의 스캔량을 확인할 수 없습니다.",
+      "hint": "이 예상량은 요금 한도가 아닙니다. 스크립트와 외부 테이블은 더 많은 데이터를 스캔할 수 있습니다."
+    },
     "run": "실행",
     "running": "실행 중...",
     "stop": "중지",

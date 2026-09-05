@@ -1121,6 +1121,12 @@
     "unknownConnection": "Conexão desconhecida"
   },
   "query": {
+    "bigqueryScan": {
+      "title": "Estimativa do BigQuery",
+      "bytes": "Volume estimado de dados a analisar: {{bytes}} bytes.",
+      "unknown": "O volume a analisar não está disponível para esta consulta.",
+      "hint": "Esta estimativa não limita a cobrança. Scripts e tabelas externas podem analisar mais dados."
+    },
     "run": "Executar",
     "running": "Executando...",
     "stop": "Parar",
