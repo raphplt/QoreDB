@@ -24,6 +24,24 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-08-30',
     items: [
       {
+        title: 'MCP server for AI agents',
+        description:
+          'qore-mcp now ships with the app and exposes eight read-only tools (preview, schema search, explain, namespace-scoped queries), qore:// table resources and three prompts to Claude Desktop, Claude Code, Cursor and any MCP client.',
+        type: 'feature',
+      },
+      {
+        title: 'Connections reach agents only on opt-in',
+        description:
+          'Settings > AI agents lists every saved connection with an "Expose to AI agents" switch that gates MCP and CLI access. Existing connections stay hidden until you enable it; exposed sessions are forced read-only, follow the safety policy and close after ten idle minutes.',
+        type: 'improvement',
+      },
+      {
+        title: 'AI agents settings',
+        description:
+          'A Settings section detects the qore-mcp binary, offers copy-ready client snippets, lists the exposed connections and recalls the limits applied to agents.',
+        type: 'feature',
+      },
+      {
         title: 'Nine wire-compatible databases',
         description:
           'TiDB, StarRocks, Apache Doris and SingleStore join the MySQL family; YugabyteDB joins PostgreSQL; KeyDB and Garnet join Redis; and Azure SQL plus Azure Synapse join SQL Server with TLS enforced.',
