@@ -7,9 +7,43 @@ use std::sync::Arc;
 use tauri::State;
 
 use crate::interceptor::{
-    AuditExportFormat, AuditLogEntry, AuditStats, Environment, InterceptorConfig, ProfilingMetrics,
-    QueryOperationType, SafetyRule, SlowQueryEntry,
+    AuditExportFormat, AuditLogEntry, AuditStats, Environment, FingerprintTrend, InterceptorConfig,
+    ProfilingMetrics, QueryOperationType, SafetyRule, SlowQueryEntry, TrendFilter,
 };
+
+#[derive(Debug, Serialize)]
+pub struct QueryTrendsResponse {
+    pub success: bool,
+    pub trends: Vec<FingerprintTrend>,
+    pub error: Option<String>,
+}
+
+/// Core: per-fingerprint trends from the audit file. Regressions ride along
+/// only in Pro builds.
+#[tauri::command]
+pub async fn get_query_trends(
+    state: State<'_, crate::SharedState>,
+    filter: TrendFilter,
+) -> Result<QueryTrendsResponse, String> {
+    let interceptor = {
+        let state = state.lock().await;
+        Arc::clone(&state.interceptor)
+    };
+    Ok(
+        match interceptor.get_query_trends(&filter, cfg!(feature = "pro")) {
+            Ok(trends) => QueryTrendsResponse {
+                success: true,
+                trends,
+                error: None,
+            },
+            Err(error) => QueryTrendsResponse {
+                success: false,
+                trends: Vec::new(),
+                error: Some(error),
+            },
+        },
+    )
+}
 
 #[derive(Debug, Serialize)]
 pub struct InterceptorConfigResponse {

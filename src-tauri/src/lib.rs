@@ -202,6 +202,17 @@ pub fn run() {
                 });
             }
 
+            {
+                let state: tauri::State<SharedState> = app.state();
+                let interceptor = Arc::clone(&state.blocking_lock().interceptor);
+                let alert_handle = app.handle().clone();
+                interceptor.set_alert_sink(Arc::new(move |alert| {
+                    emit_gate::emit_gated(&alert_handle, "interceptor-alert", &alert);
+                }));
+                #[cfg(feature = "pro")]
+                interceptor.enable_pro_detection();
+            }
+
             let wr: tauri::State<workspace::write_registry::WriteRegistry> = app.state();
             workspace::watcher::start_workspace_watcher(
                 app.handle().clone(),
@@ -346,6 +357,7 @@ pub fn run() {
             commands::interceptor::clear_audit_log,
             commands::interceptor::export_audit_log,
             commands::interceptor::get_profiling_metrics,
+            commands::interceptor::get_query_trends,
             commands::interceptor::get_slow_queries,
             commands::interceptor::clear_slow_queries,
             commands::interceptor::reset_profiling,
