@@ -232,7 +232,8 @@ pub struct SchemaMatch {
 }
 
 /// Case-insensitive substring search over table and column names of one
-/// namespace. Never touches row data.
+/// namespace. Never touches row data. One catalogue query when the engine
+/// has one; otherwise tables are described one by one.
 pub async fn search_schema(
     ctx: &AgentToolContext,
     session: SessionId,
@@ -244,35 +245,102 @@ pub async fn search_schema(
         return Err("Pattern is empty".to_string());
     }
 
-    let list = list_tables(ctx, session, namespace, None).await?;
-    let mut matches = Vec::new();
-    for collection in list.collections {
-        if collection.name.to_lowercase().contains(&needle) {
-            matches.push(SchemaMatch {
-                table: collection.name.clone(),
-                column: None,
-                data_type: None,
-            });
+    let driver = ctx
+        .session_manager
+        .get_driver(session)
+        .await
+        .map_err(|e| e.sanitized_message())?;
+    let columns = match crate::schema_search::columns_query(driver.driver_id(), namespace) {
+        Some(query) => {
+            match catalogue_columns(ctx, driver.as_ref(), session, namespace, &query).await {
+                Ok(columns) => columns,
+                Err(err) => {
+                    tracing::warn!("catalogue search failed, describing tables instead: {err}");
+                    described_columns(ctx, session, namespace).await?
+                }
+            }
         }
-        let Ok(schema) = describe_table(ctx, session, namespace, &collection.name, None).await
-        else {
-            continue;
-        };
-        for column in schema.columns {
-            if column.name.to_lowercase().contains(&needle) {
+        None => described_columns(ctx, session, namespace).await?,
+    };
+
+    let mut matches = Vec::new();
+    let mut last_table: Option<&str> = None;
+    for (table, column, data_type) in &columns {
+        if last_table != Some(table.as_str()) {
+            last_table = Some(table);
+            if table.to_lowercase().contains(&needle) {
                 matches.push(SchemaMatch {
-                    table: collection.name.clone(),
-                    column: Some(column.name),
-                    data_type: Some(column.data_type),
+                    table: table.clone(),
+                    column: None,
+                    data_type: None,
                 });
             }
         }
+        if !column.is_empty() && column.to_lowercase().contains(&needle) {
+            matches.push(SchemaMatch {
+                table: table.clone(),
+                column: Some(column.clone()),
+                data_type: Some(data_type.clone()),
+            });
+        }
         if matches.len() >= SEARCH_SCHEMA_MAX_RESULTS {
-            matches.truncate(SEARCH_SCHEMA_MAX_RESULTS);
             break;
         }
     }
     Ok(matches)
+}
+
+type ColumnRow = (String, String, String);
+
+async fn catalogue_columns(
+    ctx: &AgentToolContext,
+    driver: &dyn qore_core::DataEngine,
+    session: SessionId,
+    namespace: &Namespace,
+    query: &str,
+) -> Result<Vec<ColumnRow>, String> {
+    let query_id = ctx.query_manager.register(session).await;
+    let result = crate::governance::with_timeout(
+        &ctx.policy,
+        driver.execute_in_namespace(session, Some(namespace.clone()), query, query_id),
+    )
+    .await;
+    ctx.query_manager.finish(query_id).await;
+    let result = result?.map_err(|e| e.sanitized_message())?;
+    let cell = |row: &qore_core::Row, i: usize| -> String {
+        row.values
+            .get(i)
+            .and_then(|v| v.as_text())
+            .unwrap_or_default()
+            .to_string()
+    };
+    Ok(result
+        .rows
+        .iter()
+        .map(|row| (cell(row, 0), cell(row, 1), cell(row, 2)))
+        .collect())
+}
+
+/// Tables without columns still appear, as a row with an empty column name,
+/// so table-name matches survive the flattening.
+async fn described_columns(
+    ctx: &AgentToolContext,
+    session: SessionId,
+    namespace: &Namespace,
+) -> Result<Vec<ColumnRow>, String> {
+    let list = list_tables(ctx, session, namespace, None).await?;
+    let mut rows = Vec::new();
+    for collection in list.collections {
+        let schema = describe_table(ctx, session, namespace, &collection.name, None).await;
+        let columns = schema.map(|s| s.columns).unwrap_or_default();
+        if columns.is_empty() {
+            rows.push((collection.name.clone(), String::new(), String::new()));
+        }
+        for column in columns {
+            rows.push((collection.name.clone(), column.name, column.data_type));
+        }
+    }
+    Ok(rows)
 }
 
 #[cfg(all(test, feature = "driver-sqlite"))]
@@ -447,6 +515,21 @@ mod tests {
                 .iter()
                 .any(|m| m.table == "orders" && m.column.is_none())
         );
+
+        let described = described_columns(&f.ctx, f.session, &f.namespace)
+            .await
+            .unwrap();
+        let driver = f.ctx.session_manager.get_driver(f.session).await.unwrap();
+        let catalogue = catalogue_columns(
+            &f.ctx,
+            driver.as_ref(),
+            f.session,
+            &f.namespace,
+            &crate::schema_search::columns_query("sqlite", &f.namespace).unwrap(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(described, catalogue);
         assert!(
             search_schema(&f.ctx, f.session, &f.namespace, "  ")
                 .await

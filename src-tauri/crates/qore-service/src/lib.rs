@@ -18,6 +18,7 @@ pub mod paths;
 pub mod policy;
 pub mod query;
 pub mod ratelimit;
+pub mod schema_search;
 pub mod sensitive;
 pub mod vault;
 pub mod virtual_relations;
