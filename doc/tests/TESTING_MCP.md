@@ -57,8 +57,10 @@ Avec l'inspecteur (`npx @modelcontextprotocol/inspector qore-mcp`) ou Claude Cod
    liste des capacités du driver.
 6. `search_schema` avec `pattern: "mail"` renvoie les colonnes `email` et ne
    renvoie aucune donnée.
-7. `resources/list` liste les tables de `agents-on` ; `resources/read` sur une
-   URI renvoie le `describe_table` en JSON ; une URI `file://` est refusée.
+7. `resources/list` liste une ressource par connexion exposée, sans se
+   connecter ; `resources/read` sur `qore://<id>` renvoie les namespaces et
+   tables avec leurs URIs ; sur une URI de table, le `describe_table` en JSON ;
+   une URI `file://` est refusée.
 8. Les appels apparaissent dans l'audit (Settings > Sécurité) avec la source
    `mcp`.
 9. Laisser le serveur ouvert plus de dix minutes puis rappeler un outil : la

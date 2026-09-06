@@ -82,5 +82,4 @@ QoreDB is a desktop application (Tauri/Rust) that connects to user databases. Th
   - **Store scoping**: the server reads the default vault, or the `.qoredb` workspace it was pointed at or detected from its working directory, never both.
 - **Current limitation**:
   - The app's master-password lock is not shared: the server reads secrets from the OS keyring directly, so a vault locked in the app stays readable by an agent as long as the keyring is unlocked. The exposure flag is the effective gate.
-  - `resources/list` connects to every exposed connection to enumerate tables, production included.
   - Query results are returned to the agent and may be sent to a remote model by the client; column masking is not applied yet (planned, see the v0.1.39 scope).

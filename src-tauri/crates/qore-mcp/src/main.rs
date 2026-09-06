@@ -45,7 +45,8 @@ Tools:\n\
 - run_query: a read-only query, optionally scoped to a database/schema.\n\
 - explain_query: the execution plan of a read-only query.\n\
 \n\
-Resources: qore://{connection_id}/{database}[/{schema}]/{table} returns the table schema as JSON.\n\
+Resources: qore://{connection_id} lists namespaces and tables; \
+qore://{connection_id}/{database}[/{schema}]/{table} returns a table schema as JSON.\n\
 Prompts: audit_table, explain_slow_query, document_schema.\n\
 \n\
 Writes are never possible from this server; suggest DDL or DML to the user instead of trying.";
@@ -390,50 +391,65 @@ impl QoreMcp {
 }
 
 impl QoreMcp {
-    async fn table_resources(&self) -> Result<Vec<rmcp::model::Resource>, String> {
-        let ctx = self.tool_ctx();
-        let mut out = Vec::new();
-        for connection in self.vault().exposed()? {
-            let Ok(session) = self.ensure_session(&connection.id).await else {
-                tracing::warn!("skipping unreachable connection {}", connection.id);
-                continue;
-            };
-            let Ok(namespaces) = agent_tools::list_namespaces(&ctx, session).await else {
-                continue;
-            };
-            for namespace in namespaces {
-                let Ok(list) = agent_tools::list_tables(&ctx, session, &namespace, None).await
-                else {
-                    continue;
-                };
-                for table in list.collections {
-                    out.push(resources::table_resource(
-                        &connection.id,
-                        &connection.name,
-                        &namespace,
-                        &table.name,
-                    ));
-                    if out.len() >= resources::MAX_LISTED {
-                        return Ok(out);
-                    }
-                }
-            }
-        }
-        Ok(out)
+    /// Listing never touches the network: one resource per exposed connection.
+    fn connection_resources(&self) -> Result<Vec<rmcp::model::Resource>, String> {
+        Ok(self
+            .vault()
+            .exposed()?
+            .iter()
+            .map(|c| resources::connection_resource(&c.id, &c.name, &c.driver))
+            .collect())
     }
 
-    async fn read_table_resource(&self, uri: &str) -> Result<String, String> {
-        let table = resources::parse_uri(uri)?;
-        let session = self.ensure_session(&table.connection_id).await?;
-        let schema = agent_tools::describe_table(
-            &self.tool_ctx(),
-            session,
-            &table.namespace,
-            &table.table,
-            None,
-        )
-        .await?;
-        to_json(&schema)
+    async fn read_resource_json(&self, uri: &str) -> Result<String, String> {
+        match resources::parse_uri(uri)? {
+            resources::ResourceRef::Connection(connection_id) => {
+                self.connection_overview(&connection_id).await
+            }
+            resources::ResourceRef::Table(table) => {
+                let session = self.ensure_session(&table.connection_id).await?;
+                let schema = agent_tools::describe_table(
+                    &self.tool_ctx(),
+                    session,
+                    &table.namespace,
+                    &table.table,
+                    None,
+                )
+                .await?;
+                to_json(&schema)
+            }
+        }
+    }
+
+    async fn connection_overview(&self, connection_id: &str) -> Result<String, String> {
+        let session = self.ensure_session(connection_id).await?;
+        let ctx = self.tool_ctx();
+        let mut namespaces = Vec::new();
+        for namespace in agent_tools::list_namespaces(&ctx, session).await? {
+            let tables = match agent_tools::list_tables(&ctx, session, &namespace, None).await {
+                Ok(list) => list
+                    .collections
+                    .iter()
+                    .take(resources::MAX_TABLES_PER_NAMESPACE)
+                    .map(|t| {
+                        serde_json::json!({
+                            "name": t.name,
+                            "uri": resources::format_uri(connection_id, &namespace, &t.name),
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+                Err(err) => {
+                    tracing::warn!("skipping namespace {}: {err}", namespace.database);
+                    continue;
+                }
+            };
+            namespaces.push(serde_json::json!({
+                "database": namespace.database,
+                "schema": namespace.schema,
+                "tables": tables,
+            }));
+        }
+        to_json(&serde_json::json!({ "connection_id": connection_id, "namespaces": namespaces }))
     }
 }
 
@@ -469,8 +485,7 @@ impl ServerHandler for QoreMcp {
         _context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, McpError> {
         let resources = self
-            .table_resources()
-            .await
+            .connection_resources()
             .map_err(|e| McpError::internal_error(e, None))?;
         Ok(ListResourcesResult::with_all_items(resources))
     }
@@ -491,7 +506,7 @@ impl ServerHandler for QoreMcp {
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResult, McpError> {
         let text = self
-            .read_table_resource(&request.uri)
+            .read_resource_json(&request.uri)
             .await
             .map_err(|e| McpError::resource_not_found(e, None))?;
         Ok(ReadResourceResult::new(vec![
