@@ -204,13 +204,12 @@ pub fn run() {
 
             {
                 let state: tauri::State<SharedState> = app.state();
-                let interceptor = Arc::clone(&state.blocking_lock().interceptor);
+                let guard = state.blocking_lock();
                 let alert_handle = app.handle().clone();
-                interceptor.set_alert_sink(Arc::new(move |alert| {
+                guard.interceptor.set_alert_sink(Arc::new(move |alert| {
                     emit_gate::emit_gated(&alert_handle, "interceptor-alert", &alert);
                 }));
-                #[cfg(feature = "pro")]
-                interceptor.enable_pro_detection();
+                commands::license::sync_pro_detection(&guard);
             }
 
             let wr: tauri::State<workspace::write_registry::WriteRegistry> = app.state();

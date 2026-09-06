@@ -40,8 +40,8 @@ pub struct InterceptorPipeline {
     n_plus_one: NPlusOneDetector,
     thresholds: ThresholdMonitor,
     alert_sink: RwLock<Option<AlertSink>>,
-    /// N+1 detection, threshold alerts and regressions are Pro; the desktop
-    /// app turns them on when it is built with that feature.
+    /// N+1 detection and threshold alerts are Pro; the desktop app keeps
+    /// this in sync with the active licence.
     pro_detection: AtomicBool,
 }
 
@@ -77,8 +77,8 @@ impl InterceptorPipeline {
         *self.alert_sink.write() = Some(sink);
     }
 
-    pub fn enable_pro_detection(&self) {
-        self.pro_detection.store(true, Ordering::Relaxed);
+    pub fn set_pro_detection(&self, enabled: bool) {
+        self.pro_detection.store(enabled, Ordering::Relaxed);
     }
 
     fn pro_detection_enabled(&self) -> bool {
