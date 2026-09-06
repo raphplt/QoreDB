@@ -29,6 +29,7 @@ use qore_service::agent_access::{self, AgentSessions, AgentVault};
 use qore_service::agent_tools::{self, AgentToolContext, PREVIEW_MAX_ROWS};
 use qore_service::interceptor::QuerySource;
 use qore_service::paths::{QUERY_TIMEOUT_MS, config_dir};
+use qore_service::policy::SafetyPolicy;
 
 const INSTRUCTIONS: &str = "QoreDB gives read-only access to the database connections the user \
 explicitly exposed to AI agents. Every session is forced read-only, the safety policy applies \
@@ -171,15 +172,19 @@ impl QoreMcp {
         AgentVault::open(self.storage_dir.clone(), self.workspace.as_deref())
     }
 
+    /// The policy is reloaded from disk on every call, like the vault: a limit
+    /// changed in Settings applies to the next agent query, not to the next
+    /// server start.
     fn tool_ctx(&self) -> AgentToolContext {
-        AgentToolContext::from_service(&self.ctx)
+        let mut ctx = AgentToolContext::from_service(&self.ctx);
+        ctx.policy = SafetyPolicy::load();
+        ctx
     }
 
     /// The safety policy's duration wins when it is stricter than the
     /// headless default.
-    fn query_timeout(&self) -> u64 {
-        self.ctx
-            .policy
+    fn query_timeout(&self, ctx: &AgentToolContext) -> u64 {
+        ctx.policy
             .max_query_duration_ms
             .map_or(QUERY_TIMEOUT_MS, |ms| ms.min(QUERY_TIMEOUT_MS))
     }
@@ -221,13 +226,14 @@ impl QoreMcp {
             .database
             .as_deref()
             .map(|db| namespace_of(db, req.schema.as_deref()));
+        let ctx = self.tool_ctx();
         let result = agent_tools::run_query(
-            &self.tool_ctx(),
+            &ctx,
             session,
             &req.query,
             namespace.as_ref(),
             false,
-            Some(self.query_timeout()),
+            Some(self.query_timeout(&ctx)),
             QuerySource::Mcp,
         )
         .await?;
@@ -240,12 +246,13 @@ impl QoreMcp {
             .database
             .as_deref()
             .map(|db| namespace_of(db, req.schema.as_deref()));
+        let ctx = self.tool_ctx();
         let result = agent_tools::explain_query(
-            &self.tool_ctx(),
+            &ctx,
             session,
             namespace.as_ref(),
             &req.query,
-            Some(self.query_timeout()),
+            Some(self.query_timeout(&ctx)),
             QuerySource::Mcp,
         )
         .await?;
