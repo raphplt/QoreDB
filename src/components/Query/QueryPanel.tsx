@@ -839,37 +839,12 @@ export function QueryPanel({
     const queryToExplain = selection && selection.trim().length > 0 ? selection : query;
     if (!queryToExplain.trim()) return;
     const trimmed = queryToExplain.replace(/;+\s*$/, '');
+    // The driver declares its own EXPLAIN syntax; the PostgreSQL form is the
+    // fallback while capabilities are still loading.
+    const prefix = driverCapabilities?.explain_prefix ?? 'EXPLAIN (FORMAT JSON)';
 
-    let explainQuery: string;
-    switch (dialect) {
-      case Driver.Mysql:
-      case Driver.Mariadb:
-      case Driver.PlanetScale:
-        explainQuery = `EXPLAIN FORMAT=JSON ${trimmed}`;
-        break;
-      case Driver.TiDb:
-      case Driver.StarRocks:
-      case Driver.Doris:
-      case Driver.SingleStore:
-        explainQuery = `EXPLAIN ${trimmed}`;
-        break;
-      case Driver.Sqlite:
-        explainQuery = `EXPLAIN QUERY PLAN ${trimmed}`;
-        break;
-      case Driver.Snowflake:
-        explainQuery = `EXPLAIN USING TABULAR ${trimmed}`;
-        break;
-      // The driver answers EXPLAIN with a dry run: bytes scanned, nothing billed.
-      case Driver.BigQuery:
-        explainQuery = `EXPLAIN ${trimmed}`;
-        break;
-      default:
-        explainQuery = `EXPLAIN (FORMAT JSON) ${trimmed}`;
-        break;
-    }
-
-    await runQuery(explainQuery, false, 'explain');
-  }, [sessionId, isDocument, isExplainSupported, query, runQuery, dialect]);
+    await runQuery(`${prefix} ${trimmed}`, false, 'explain');
+  }, [sessionId, isDocument, isExplainSupported, query, runQuery, driverCapabilities]);
 
   const handleToggleKeepResults = useCallback(() => {
     setKeepResults(prev => {

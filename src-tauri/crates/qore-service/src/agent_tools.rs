@@ -185,18 +185,6 @@ pub async fn preview_table(
     .map_err(|e| e.sanitized())
 }
 
-/// Mirrors the prefixes the desktop editor uses for its Explain action.
-pub fn explain_prefix(driver_id: &str) -> Option<&'static str> {
-    Some(match driver_id.to_ascii_lowercase().as_str() {
-        "mysql" | "mariadb" | "planetscale" => "EXPLAIN FORMAT=JSON",
-        "tidb" | "starrocks" | "doris" | "singlestore" | "bigquery" => "EXPLAIN",
-        "sqlite" => "EXPLAIN QUERY PLAN",
-        "snowflake" => "EXPLAIN USING TABULAR",
-        "sqlserver" | "azuresql" | "synapse" => return None,
-        _ => "EXPLAIN (FORMAT JSON)",
-    })
-}
-
 pub async fn explain_query(
     ctx: &AgentToolContext,
     session: SessionId,
@@ -210,17 +198,11 @@ pub async fn explain_query(
         .get_driver(session)
         .await
         .map_err(|e| e.sanitized_message())?;
-    let capabilities = driver.capabilities();
-    let prefix = if capabilities.explain {
-        explain_prefix(driver.driver_id())
-    } else {
-        None
-    };
-    let Some(prefix) = prefix else {
+    let Some(prefix) = driver.explain_prefix() else {
         return Err(format!(
             "{} does not support EXPLAIN through this tool. Driver capabilities: {}",
             driver.driver_id(),
-            serde_json::to_string(&capabilities).unwrap_or_default()
+            serde_json::to_string(&driver.capabilities()).unwrap_or_default()
         ));
     };
 
@@ -431,11 +413,15 @@ mod tests {
         assert!(plan.columns.iter().any(|c| c.name == "detail"));
     }
 
-    #[tokio::test]
-    async fn explain_query_refuses_unsupported_engines() {
-        assert_eq!(explain_prefix("sqlserver"), None);
-        assert_eq!(explain_prefix("sqlite"), Some("EXPLAIN QUERY PLAN"));
-        assert_eq!(explain_prefix("postgres"), Some("EXPLAIN (FORMAT JSON)"));
+    #[test]
+    fn explain_prefix_comes_from_the_driver_capabilities() {
+        use qore_core::DataEngine;
+        let sqlite = SqliteDriver::new();
+        assert_eq!(sqlite.explain_prefix(), Some("EXPLAIN QUERY PLAN"));
+        assert_eq!(
+            sqlite.capabilities().explain_prefix.as_deref(),
+            Some("EXPLAIN QUERY PLAN")
+        );
     }
 
     #[tokio::test]
