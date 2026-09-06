@@ -14,7 +14,6 @@ import {
   getQueryTrends,
 } from '../../lib/tauri/interceptor';
 import { Button } from '../ui/button';
-import { ScrollArea } from '../ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const DAY_OPTIONS = [7, 14, 30] as const;
@@ -46,11 +45,12 @@ export function QueryTrendsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 p-3 border-b border-border">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
         <p className="text-xs text-muted-foreground">{t('interceptor.trends.description')}</p>
-        <div className="flex items-center gap-2">
+        <div className="flex-1" />
+        <div className="flex items-center gap-1">
           <Select value={String(days)} onValueChange={value => setDays(Number(value))}>
-            <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectTrigger size="sm" className="w-36 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -61,23 +61,23 @@ export function QueryTrendsPanel() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={load} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </Button>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 min-h-0 overflow-auto">
         {error ? (
-          <p className="p-4 text-center text-destructive text-sm">{error}</p>
+          <p className="px-4 py-12 text-center text-error text-sm">{error}</p>
         ) : trends.length === 0 && !loading ? (
-          <p className="p-8 text-center text-muted-foreground text-sm">
+          <p className="px-4 py-12 text-center text-muted-foreground text-sm">
             {t('interceptor.trends.empty')}
           </p>
         ) : (
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-background text-muted-foreground">
-              <tr className="border-b border-border">
+            <thead className="sticky top-0 bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
                 <th className="px-3 py-2 text-left font-medium">
                   {t('interceptor.trends.columns.query')}
                 </th>
@@ -101,7 +101,7 @@ export function QueryTrendsPanel() {
             </tbody>
           </table>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -109,10 +109,11 @@ export function QueryTrendsPanel() {
 function TrendRow({ trend, showRegression }: { trend: FingerprintTrend; showRegression: boolean }) {
   const { t } = useTranslation();
   const p95Color = getPerformanceColor(getPerformanceClass(trend.p95_ms));
+  const errorTone = trend.error_rate > 0 ? 'var(--q-error)' : undefined;
   const regression = showRegression ? trend.regression : undefined;
 
   return (
-    <tr className="border-b border-border/60 align-top">
+    <tr className="border-t border-border align-top hover:bg-muted/30">
       <td className="px-3 py-2 max-w-md">
         <div className="flex items-center gap-2">
           {regression && (
@@ -123,7 +124,7 @@ function TrendRow({ trend, showRegression }: { trend: FingerprintTrend; showRegr
                 count: regression.recent_count,
               })}
             >
-              <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-error/15 px-1.5 py-px text-[10px] font-semibold uppercase text-error">
                 <TrendingUp size={10} />
                 {t('interceptor.trends.regression')}
               </span>
@@ -140,12 +141,10 @@ function TrendRow({ trend, showRegression }: { trend: FingerprintTrend; showRegr
       </td>
       <td className="px-2 py-2 text-right tabular-nums">{trend.count.toLocaleString()}</td>
       <td className="px-2 py-2 text-right tabular-nums">{formatExecutionTime(trend.p50_ms)}</td>
-      <td className={`px-2 py-2 text-right tabular-nums ${p95Color}`}>
+      <td className="px-2 py-2 text-right tabular-nums font-medium" style={{ color: p95Color }}>
         {formatExecutionTime(trend.p95_ms)}
       </td>
-      <td
-        className={`px-2 py-2 text-right tabular-nums ${trend.error_rate > 0 ? 'text-destructive' : ''}`}
-      >
+      <td className="px-2 py-2 text-right tabular-nums" style={{ color: errorTone }}>
         {(trend.error_rate * 100).toFixed(1)}%
       </td>
       <td className="px-3 py-1">

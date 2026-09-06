@@ -1702,7 +1702,7 @@
   },
   "paginationDiagnostics": {
     "title": "페이지네이션 진단",
-    "description": "현재 세션의 탭별 측정값입니다. 테이블 이름, 셀 값, 커서는 기록하지 않습니다.",
+    "description": "탭별 세션 측정값입니다. 테이블 이름, 셀 값, 커서는 기록되지 않습니다.",
     "empty": "이 세션에서 아직 탐색한 테이블이 없습니다.",
     "scope": "탭",
     "pages": "페이지",
@@ -2129,9 +2129,19 @@
       "tabs": {
         "audit": "감사 로그",
         "profiling": "프로파일링",
-        "trends": "추세"
+        "trends": "추세",
+        "slow": "느린 쿼리"
       },
-      "flaggedBy": "표시 규칙: {{rule}}"
+      "flaggedBy": "표시 규칙: {{rule}}",
+      "columns": {
+        "time": "시간",
+        "environment": "환경",
+        "query": "쿼리",
+        "database": "데이터베이스",
+        "duration": "소요 시간",
+        "rows": "행",
+        "operation": "작업"
+      }
     },
     "profiling": {
       "title": "쿼리 프로파일링",

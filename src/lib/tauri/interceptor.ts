@@ -93,6 +93,8 @@ export interface AuditLogEntry {
   safety_rule?: string;
   driver_id: string;
   fingerprint?: string;
+  /** Who issued the query: user, ai, mcp, cli or replay. */
+  source?: string;
 }
 
 export type AuditExportFormat = 'json' | 'jsonl' | 'csv';
@@ -433,13 +435,13 @@ export function getPerformanceClass(ms: number): 'fast' | 'normal' | 'slow' | 'c
 export function getPerformanceColor(perfClass: 'fast' | 'normal' | 'slow' | 'critical'): string {
   switch (perfClass) {
     case 'fast':
-      return '#22c55e'; // green-500
+      return 'var(--q-success)';
     case 'normal':
-      return '#3b82f6'; // blue-500
+      return 'var(--q-info)';
     case 'slow':
-      return '#f59e0b'; // amber-500
+      return 'var(--q-warning)';
     case 'critical':
-      return '#ef4444'; // red-500
+      return 'var(--q-error)';
   }
 }
 

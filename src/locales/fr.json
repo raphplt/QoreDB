@@ -1750,7 +1750,7 @@
   },
   "paginationDiagnostics": {
     "title": "Diagnostic de pagination",
-    "description": "Mesures par onglet pour la session en cours. Aucun nom de table, aucune valeur de cellule et aucun curseur n'est enregistré.",
+    "description": "Temps de pagination par onglet pour cette session. Ni nom de table, ni valeur, ni curseur n'est enregistré.",
     "empty": "Aucune table parcourue dans cette session.",
     "scope": "Onglet",
     "pages": "Pages",
@@ -2177,9 +2177,19 @@
       "tabs": {
         "audit": "Journal d'audit",
         "profiling": "Profilage",
-        "trends": "Tendances"
+        "trends": "Tendances",
+        "slow": "Requêtes lentes"
       },
-      "flaggedBy": "Signalé par : {{rule}}"
+      "flaggedBy": "Signalé par : {{rule}}",
+      "columns": {
+        "time": "Heure",
+        "environment": "Env",
+        "query": "Requête",
+        "database": "Base",
+        "duration": "Durée",
+        "rows": "Lignes",
+        "operation": "Opération"
+      }
     },
     "profiling": {
       "title": "Profilage des requêtes",

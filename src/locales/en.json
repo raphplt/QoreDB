@@ -1750,7 +1750,7 @@
   },
   "paginationDiagnostics": {
     "title": "Pagination diagnostics",
-    "description": "Per-tab measurements for the current session. No table name, cell value or cursor is recorded.",
+    "description": "Session timings per tab. Table names, cell values and cursors are never recorded.",
     "empty": "No table browsed yet in this session.",
     "scope": "Tab",
     "pages": "Pages",
@@ -2177,9 +2177,19 @@
       "tabs": {
         "audit": "Audit log",
         "profiling": "Profiling",
-        "trends": "Trends"
+        "trends": "Trends",
+        "slow": "Slow queries"
       },
-      "flaggedBy": "Flagged by: {{rule}}"
+      "flaggedBy": "Flagged by: {{rule}}",
+      "columns": {
+        "time": "Time",
+        "environment": "Env",
+        "query": "Query",
+        "database": "Database",
+        "duration": "Duration",
+        "rows": "Rows",
+        "operation": "Operation"
+      }
     },
     "profiling": {
       "title": "Query Profiling",

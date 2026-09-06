@@ -1711,7 +1711,7 @@
   },
   "paginationDiagnostics": {
     "title": "Diagnóstico de paginação",
-    "description": "Medições por aba da sessão atual. Nenhum nome de tabela, valor de célula ou cursor é registrado.",
+    "description": "Tempos da sessão por aba. Nomes de tabela, valores e cursores nunca são registrados.",
     "empty": "Nenhuma tabela navegada nesta sessão.",
     "scope": "Aba",
     "pages": "Páginas",
@@ -2138,9 +2138,19 @@
       "tabs": {
         "audit": "Log de auditoria",
         "profiling": "Profiling",
-        "trends": "Tendências"
+        "trends": "Tendências",
+        "slow": "Consultas lentas"
       },
-      "flaggedBy": "Sinalizado por: {{rule}}"
+      "flaggedBy": "Sinalizado por: {{rule}}",
+      "columns": {
+        "time": "Hora",
+        "environment": "Amb.",
+        "query": "Consulta",
+        "database": "Banco",
+        "duration": "Duração",
+        "rows": "Linhas",
+        "operation": "Operação"
+      }
     },
     "profiling": {
       "title": "Análise de Performance",

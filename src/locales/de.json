@@ -1711,7 +1711,7 @@
   },
   "paginationDiagnostics": {
     "title": "Paginierungsdiagnose",
-    "description": "Messungen pro Tab für die aktuelle Sitzung. Es werden weder Tabellennamen noch Zellwerte oder Cursor gespeichert.",
+    "description": "Sitzungszeiten pro Tab. Tabellennamen, Zellwerte und Cursor werden nie gespeichert.",
     "empty": "In dieser Sitzung wurde noch keine Tabelle durchsucht.",
     "scope": "Tab",
     "pages": "Seiten",
@@ -2138,9 +2138,19 @@
       "tabs": {
         "audit": "Audit-Log",
         "profiling": "Profiling",
-        "trends": "Trends"
+        "trends": "Trends",
+        "slow": "Langsame Abfragen"
       },
-      "flaggedBy": "Markiert durch: {{rule}}"
+      "flaggedBy": "Markiert durch: {{rule}}",
+      "columns": {
+        "time": "Zeit",
+        "environment": "Umg.",
+        "query": "Abfrage",
+        "database": "Datenbank",
+        "duration": "Dauer",
+        "rows": "Zeilen",
+        "operation": "Operation"
+      }
     },
     "profiling": {
       "title": "Abfrage-Profiling",

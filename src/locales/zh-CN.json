@@ -1702,7 +1702,7 @@
   },
   "paginationDiagnostics": {
     "title": "分页诊断",
-    "description": "当前会话按标签页的测量值。不记录表名、单元格值和游标。",
+    "description": "按标签页统计的会话耗时。不会记录表名、单元格值或游标。",
     "empty": "本次会话尚未浏览任何表。",
     "scope": "标签页",
     "pages": "页数",
@@ -2129,9 +2129,19 @@
       "tabs": {
         "audit": "审计日志",
         "profiling": "性能分析",
-        "trends": "趋势"
+        "trends": "趋势",
+        "slow": "慢查询"
       },
-      "flaggedBy": "标记规则:{{rule}}"
+      "flaggedBy": "标记规则:{{rule}}",
+      "columns": {
+        "time": "时间",
+        "environment": "环境",
+        "query": "查询",
+        "database": "数据库",
+        "duration": "耗时",
+        "rows": "行数",
+        "operation": "操作"
+      }
     },
     "profiling": {
       "title": "查询性能分析",

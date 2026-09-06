@@ -1711,7 +1711,7 @@
   },
   "paginationDiagnostics": {
     "title": "Diagnóstico de paginación",
-    "description": "Mediciones por pestaña de la sesión actual. No se registra ningún nombre de tabla, valor de celda ni cursor.",
+    "description": "Tiempos de la sesión por pestaña. Nunca se registran nombres de tabla, valores ni cursores.",
     "empty": "Todavía no se ha explorado ninguna tabla en esta sesión.",
     "scope": "Pestaña",
     "pages": "Páginas",
@@ -2138,9 +2138,19 @@
       "tabs": {
         "audit": "Registro de auditoría",
         "profiling": "Perfilado",
-        "trends": "Tendencias"
+        "trends": "Tendencias",
+        "slow": "Consultas lentas"
       },
-      "flaggedBy": "Señalado por: {{rule}}"
+      "flaggedBy": "Señalado por: {{rule}}",
+      "columns": {
+        "time": "Hora",
+        "environment": "Ent.",
+        "query": "Consulta",
+        "database": "Base de datos",
+        "duration": "Duración",
+        "rows": "Filas",
+        "operation": "Operación"
+      }
     },
     "profiling": {
       "title": "Perfilado de consultas",

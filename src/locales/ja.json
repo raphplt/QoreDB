@@ -1702,7 +1702,7 @@
   },
   "paginationDiagnostics": {
     "title": "ページネーション診断",
-    "description": "現在のセッションのタブ単位の計測値です。テーブル名、セルの値、カーソルは記録されません。",
+    "description": "タブごとのセッション計測。テーブル名、セル値、カーソルは記録されません。",
     "empty": "このセッションではまだテーブルを閲覧していません。",
     "scope": "タブ",
     "pages": "ページ数",
@@ -2129,9 +2129,19 @@
       "tabs": {
         "audit": "監査ログ",
         "profiling": "プロファイリング",
-        "trends": "トレンド"
+        "trends": "トレンド",
+        "slow": "遅いクエリ"
       },
-      "flaggedBy": "フラグ: {{rule}}"
+      "flaggedBy": "フラグ: {{rule}}",
+      "columns": {
+        "time": "時刻",
+        "environment": "環境",
+        "query": "クエリ",
+        "database": "データベース",
+        "duration": "所要時間",
+        "rows": "行数",
+        "operation": "操作"
+      }
     },
     "profiling": {
       "title": "クエリプロファイリング",

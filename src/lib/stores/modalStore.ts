@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { UI_EVENT_OPEN_LOGS } from '../events/uiEvents';
 import type { SavedConnection } from '../tauri';
 
-export type AuditLogTab = 'audit' | 'profiling' | 'trends';
+export type AuditLogTab = 'audit' | 'profiling' | 'slow' | 'trends';
 
 interface ModalState {
   searchOpen: boolean;
