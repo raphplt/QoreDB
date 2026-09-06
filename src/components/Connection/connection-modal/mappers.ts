@@ -208,6 +208,8 @@ export function getMissingRequirements(formData: ConnectionFormData): string[] {
   const authRequired =
     !isDocumentDatabase(formData.driver) &&
     !isKeyValueDriver(formData.driver) &&
+    formData.driver !== Driver.Cassandra &&
+    formData.driver !== Driver.ScyllaDb &&
     (!isSearchDriver(formData.driver) || searchNeedsUser) &&
     (!isSnowflake || snowflakeNeedsUser) &&
     !isBigQuery;
