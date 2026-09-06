@@ -22,7 +22,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// List saved connections
+    /// List the saved connections exposed to AI agents
     Connections,
     /// Run a query on a saved connection
     Query { connection_id: String, sql: String },
@@ -52,12 +52,11 @@ async fn connect(ctx: &ServiceContext, connection_id: &str) -> Result<SessionId,
     let saved = storage
         .get_connection(connection_id)
         .map_err(|e| e.sanitized_message())?;
+    qore_service::agent_access::require_exposed(&saved)?;
     let creds = storage
         .get_credentials(connection_id)
         .map_err(|e| e.sanitized_message())?;
-    let config = saved
-        .to_connection_config(&creds)
-        .map_err(|e| e.sanitized_message())?;
+    let config = qore_service::agent_access::agent_connection_config(&saved, &creds)?;
     qore_service::connection::connect(&ctx.session_manager, config)
         .await
         .map_err(|e| e.sanitized())
@@ -71,19 +70,9 @@ async fn run(command: Command) -> Result<String, String> {
             let connections = storage()
                 .list_connections_full()
                 .map_err(|e| e.sanitized_message())?;
-            let summary: Vec<_> = connections
-                .into_iter()
-                .map(|c| {
-                    serde_json::json!({
-                        "id": c.id,
-                        "name": c.name,
-                        "driver": c.driver,
-                        "host": c.host,
-                        "database": c.database,
-                        "environment": c.environment.as_str(),
-                        "read_only": c.read_only,
-                    })
-                })
+            let summary: Vec<_> = qore_service::agent_access::exposed_connections(connections)
+                .iter()
+                .map(qore_service::agent_access::connection_summary)
                 .collect();
             serde_json::to_string_pretty(&summary).map_err(|e| e.to_string())
         }
