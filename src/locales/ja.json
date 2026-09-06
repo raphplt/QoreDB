@@ -931,7 +931,8 @@
       "plugins": "プラグイン",
       "license": "ライセンス",
       "ai": "AI アシスタント",
-      "admin": "管理"
+      "admin": "管理",
+      "agents": "AIエージェント"
     },
     "search": {
       "placeholder": "設定を検索...",
@@ -1023,6 +1024,45 @@
       "passwordReset": "{{email}} のパスワードを再設定しました。",
       "resetFailed": "パスワードの再設定に失敗しました",
       "loadFailed": "ユーザーの読み込みに失敗しました"
+    },
+    "agents": {
+      "status": {
+        "title": "MCPサーバー",
+        "description": "QoreDBに同梱されるqore-mcpバイナリ。Claude、Cursorなどのmcpクライアントが使用します。",
+        "loading": "検出中…",
+        "found": "検出済み",
+        "notFound": "見つかりません",
+        "path": "パス",
+        "version": "バージョン",
+        "hint": "リリースのアセットからqore-mcpをインストールするか、cargo build -p qore-mcpでビルドしてPATHに配置してください。"
+      },
+      "config": {
+        "title": "クライアント設定",
+        "description": "お使いのクライアント用のスニペットをコピーしてください。パスは検出されたバイナリを指します。",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "コピー",
+        "copied": "コピーしました",
+        "copyFailed": "クリップボードにコピーできませんでした"
+      },
+      "connections": {
+        "title": "公開中の接続",
+        "description": "AIエージェントが読み取れる接続を有効にします。このバージョン以前に保存した接続も含め、既定では無効です。",
+        "empty": "保存された接続はまだありません。サイドバーから作成し、ここで公開してください。",
+        "toggle": "AIエージェントに公開"
+      },
+      "limits": {
+        "title": "適用される制限",
+        "description": "これらのガードレールは接続の設定にかかわらず、すべてのエージェント呼び出しに適用されます。",
+        "readOnly": "読み取り専用: 読み取り専用モードなしで保存された接続でも書き込みは拒否されます。",
+        "timeout": "クエリのタイムアウト: {{seconds}} 秒",
+        "rows": "クエリあたりの最大行数: {{count}}",
+        "rowsUnlimited": "クエリあたりの最大行数: 制限なし(セキュリティで設定できます)。",
+        "rateLimit": "セッションごとのレート制限: {{state}}",
+        "idle": "10分間操作のないセッションは閉じられます。",
+        "audit": "すべての呼び出しはソース「mcp」として監査ログに記録されます。"
+      }
     }
   },
   "table": {

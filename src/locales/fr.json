@@ -969,7 +969,8 @@
       "plugins": "Extensions",
       "license": "Licence",
       "ai": "Assistant IA",
-      "admin": "Administration"
+      "admin": "Administration",
+      "agents": "Agents IA"
     },
     "search": {
       "placeholder": "Rechercher dans les paramètres...",
@@ -1061,6 +1062,45 @@
       "passwordReset": "Mot de passe réinitialisé pour {{email}}.",
       "resetFailed": "Échec de la réinitialisation du mot de passe",
       "loadFailed": "Échec du chargement des utilisateurs"
+    },
+    "agents": {
+      "status": {
+        "title": "Serveur MCP",
+        "description": "Le binaire qore-mcp livré avec QoreDB, utilisé par Claude, Cursor et les autres clients MCP.",
+        "loading": "Détection…",
+        "found": "Détecté",
+        "notFound": "Introuvable",
+        "path": "Chemin",
+        "version": "Version",
+        "hint": "Installez qore-mcp depuis les assets de release ou compilez-le avec cargo build -p qore-mcp, puis placez-le dans votre PATH."
+      },
+      "config": {
+        "title": "Configuration des clients",
+        "description": "Copiez l’extrait pour votre client. Le chemin pointe vers le binaire détecté.",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "Copier",
+        "copied": "Copié",
+        "copyFailed": "Impossible de copier dans le presse-papiers"
+      },
+      "connections": {
+        "title": "Connexions exposées",
+        "description": "Activez les connexions que les agents IA peuvent lire. Désactivé par défaut, y compris pour les connexions enregistrées avant cette version.",
+        "empty": "Aucune connexion enregistrée. Créez-en une depuis la barre latérale, puis exposez-la ici.",
+        "toggle": "Exposer aux agents IA"
+      },
+      "limits": {
+        "title": "Limites appliquées",
+        "description": "Ces garde-fous s’appliquent à chaque appel d’agent, quels que soient les réglages de la connexion.",
+        "readOnly": "Lecture seule : les écritures sont refusées même sur les connexions enregistrées sans mode lecture seule.",
+        "timeout": "Délai maximal par requête : {{seconds}} s",
+        "rows": "Lignes maximales par requête : {{count}}",
+        "rowsUnlimited": "Lignes maximales par requête : aucune limite (définissez-en une dans Sécurité).",
+        "rateLimit": "Limite de débit par session : {{state}}",
+        "idle": "Les sessions inactives depuis 10 minutes sont fermées.",
+        "audit": "Chaque appel est inscrit dans le journal d’audit avec la source « mcp »."
+      }
     }
   },
   "table": {

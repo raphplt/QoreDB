@@ -940,7 +940,8 @@
       "plugins": "Plugins",
       "license": "Licença",
       "ai": "Assistente de IA",
-      "admin": "Administração"
+      "admin": "Administração",
+      "agents": "Agentes de IA"
     },
     "search": {
       "placeholder": "Pesquisar configurações...",
@@ -1032,6 +1033,45 @@
       "passwordReset": "Senha redefinida para {{email}}.",
       "resetFailed": "Falha ao redefinir a senha",
       "loadFailed": "Falha ao carregar os usuários"
+    },
+    "agents": {
+      "status": {
+        "title": "Servidor MCP",
+        "description": "O binário qore-mcp distribuído com o QoreDB, usado por Claude, Cursor e outros clientes MCP.",
+        "loading": "Detectando…",
+        "found": "Detectado",
+        "notFound": "Não encontrado",
+        "path": "Caminho",
+        "version": "Versão",
+        "hint": "Instale o qore-mcp a partir dos assets da release ou compile-o com cargo build -p qore-mcp e adicione-o ao seu PATH."
+      },
+      "config": {
+        "title": "Configuração do cliente",
+        "description": "Copie o trecho para o seu cliente. O caminho aponta para o binário detectado.",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "copyFailed": "Não foi possível copiar para a área de transferência"
+      },
+      "connections": {
+        "title": "Conexões expostas",
+        "description": "Ative as conexões que os agentes de IA podem ler. Desativado por padrão, inclusive para conexões salvas antes desta versão.",
+        "empty": "Nenhuma conexão salva ainda. Crie uma na barra lateral e exponha-a aqui.",
+        "toggle": "Expor a agentes de IA"
+      },
+      "limits": {
+        "title": "Limites aplicados",
+        "description": "Estas proteções valem para toda chamada de agente, independentemente das configurações da conexão.",
+        "readOnly": "Somente leitura: gravações são recusadas mesmo em conexões salvas sem o modo somente leitura.",
+        "timeout": "Tempo limite por consulta: {{seconds}} s",
+        "rows": "Máximo de linhas por consulta: {{count}}",
+        "rowsUnlimited": "Máximo de linhas por consulta: sem limite (defina um em Segurança).",
+        "rateLimit": "Limite de taxa por sessão: {{state}}",
+        "idle": "Sessões ociosas por 10 minutos são encerradas.",
+        "audit": "Cada chamada é registrada no log de auditoria com a origem “mcp”."
+      }
     }
   },
   "table": {

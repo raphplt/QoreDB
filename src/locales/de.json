@@ -940,7 +940,8 @@
       "plugins": "Plugins",
       "license": "Lizenz",
       "ai": "KI-Assistent",
-      "admin": "Administration"
+      "admin": "Administration",
+      "agents": "KI-Agenten"
     },
     "search": {
       "placeholder": "Einstellungen suchen…",
@@ -1032,6 +1033,45 @@
       "passwordReset": "Passwort für {{email}} zurückgesetzt.",
       "resetFailed": "Passwort konnte nicht zurückgesetzt werden",
       "loadFailed": "Benutzer konnten nicht geladen werden"
+    },
+    "agents": {
+      "status": {
+        "title": "MCP-Server",
+        "description": "Die mit QoreDB ausgelieferte qore-mcp-Binärdatei, genutzt von Claude, Cursor und anderen MCP-Clients.",
+        "loading": "Erkennung…",
+        "found": "Erkannt",
+        "notFound": "Nicht gefunden",
+        "path": "Pfad",
+        "version": "Version",
+        "hint": "Installieren Sie qore-mcp aus den Release-Assets oder bauen Sie es mit cargo build -p qore-mcp und legen Sie es in Ihren PATH."
+      },
+      "config": {
+        "title": "Client-Konfiguration",
+        "description": "Kopieren Sie den Ausschnitt für Ihren Client. Der Pfad zeigt auf die erkannte Binärdatei.",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen"
+      },
+      "connections": {
+        "title": "Freigegebene Verbindungen",
+        "description": "Schalten Sie die Verbindungen frei, die KI-Agenten lesen dürfen. Standardmäßig aus, auch für Verbindungen, die vor dieser Version gespeichert wurden.",
+        "empty": "Noch keine gespeicherte Verbindung. Legen Sie eine in der Seitenleiste an und geben Sie sie hier frei.",
+        "toggle": "Für KI-Agenten freigeben"
+      },
+      "limits": {
+        "title": "Angewendete Grenzen",
+        "description": "Diese Schutzmaßnahmen gelten für jeden Agentenaufruf, unabhängig von den Verbindungseinstellungen.",
+        "readOnly": "Nur lesend: Schreibzugriffe werden auch bei Verbindungen ohne Nur-Lese-Modus abgelehnt.",
+        "timeout": "Zeitlimit pro Abfrage: {{seconds}} s",
+        "rows": "Maximale Zeilen pro Abfrage: {{count}}",
+        "rowsUnlimited": "Maximale Zeilen pro Abfrage: keine Grenze (unter Sicherheit festlegen).",
+        "rateLimit": "Ratenbegrenzung pro Sitzung: {{state}}",
+        "idle": "Sitzungen, die 10 Minuten inaktiv sind, werden geschlossen.",
+        "audit": "Jeder Aufruf wird mit der Quelle „mcp“ im Audit-Log festgehalten."
+      }
     }
   },
   "table": {

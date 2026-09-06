@@ -969,7 +969,8 @@
       "plugins": "Plugins",
       "license": "License",
       "ai": "AI Assistant",
-      "admin": "Administration"
+      "admin": "Administration",
+      "agents": "AI agents"
     },
     "search": {
       "placeholder": "Search settings...",
@@ -1061,6 +1062,45 @@
       "passwordReset": "Password reset for {{email}}.",
       "resetFailed": "Failed to reset password",
       "loadFailed": "Failed to load users"
+    },
+    "agents": {
+      "status": {
+        "title": "MCP server",
+        "description": "The qore-mcp binary shipped with QoreDB, used by Claude, Cursor and other MCP clients.",
+        "loading": "Detecting…",
+        "found": "Detected",
+        "notFound": "Not found",
+        "path": "Path",
+        "version": "Version",
+        "hint": "Install qore-mcp from the release assets or build it with cargo build -p qore-mcp, then put it on your PATH."
+      },
+      "config": {
+        "title": "Client configuration",
+        "description": "Copy the snippet for your client. The path points to the detected binary.",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyFailed": "Could not copy to the clipboard"
+      },
+      "connections": {
+        "title": "Exposed connections",
+        "description": "Switch on the connections AI agents may read. Off by default, including for connections saved before this version.",
+        "empty": "No saved connection yet. Create one from the sidebar, then expose it here.",
+        "toggle": "Expose to AI agents"
+      },
+      "limits": {
+        "title": "Applied limits",
+        "description": "These guardrails apply to every agent call, whatever the connection settings.",
+        "readOnly": "Read-only: writes are refused even on connections saved without read-only mode.",
+        "timeout": "Query timeout: {{seconds}} s",
+        "rows": "Maximum rows per query: {{count}}",
+        "rowsUnlimited": "Maximum rows per query: no limit (set one in Security).",
+        "rateLimit": "Rate limit per session: {{state}}",
+        "idle": "Sessions idle for 10 minutes are closed.",
+        "audit": "Every call is written to the audit log with the source “mcp”."
+      }
     }
   },
   "table": {

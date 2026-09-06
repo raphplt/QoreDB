@@ -931,7 +931,8 @@
       "plugins": "플러그인",
       "license": "라이선스",
       "ai": "AI 어시스턴트",
-      "admin": "관리"
+      "admin": "관리",
+      "agents": "AI 에이전트"
     },
     "search": {
       "placeholder": "설정 검색...",
@@ -1023,6 +1024,45 @@
       "passwordReset": "{{email}}의 비밀번호를 재설정했습니다.",
       "resetFailed": "비밀번호 재설정에 실패했습니다",
       "loadFailed": "사용자를 불러오지 못했습니다"
+    },
+    "agents": {
+      "status": {
+        "title": "MCP 서버",
+        "description": "QoreDB와 함께 제공되는 qore-mcp 바이너리로, Claude, Cursor 및 기타 MCP 클라이언트가 사용합니다.",
+        "loading": "감지 중…",
+        "found": "감지됨",
+        "notFound": "찾을 수 없음",
+        "path": "경로",
+        "version": "버전",
+        "hint": "릴리스 에셋에서 qore-mcp를 설치하거나 cargo build -p qore-mcp로 빌드한 뒤 PATH에 추가하세요."
+      },
+      "config": {
+        "title": "클라이언트 설정",
+        "description": "사용하는 클라이언트의 스니펫을 복사하세요. 경로는 감지된 바이너리를 가리킵니다.",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "복사",
+        "copied": "복사됨",
+        "copyFailed": "클립보드에 복사하지 못했습니다"
+      },
+      "connections": {
+        "title": "공개된 연결",
+        "description": "AI 에이전트가 읽을 수 있는 연결을 켜세요. 이 버전 이전에 저장된 연결을 포함해 기본값은 꺼짐입니다.",
+        "empty": "저장된 연결이 아직 없습니다. 사이드바에서 연결을 만든 뒤 여기서 공개하세요.",
+        "toggle": "AI 에이전트에 공개"
+      },
+      "limits": {
+        "title": "적용되는 제한",
+        "description": "이 보호 장치는 연결 설정과 관계없이 모든 에이전트 호출에 적용됩니다.",
+        "readOnly": "읽기 전용: 읽기 전용 모드 없이 저장된 연결에서도 쓰기는 거부됩니다.",
+        "timeout": "쿼리 시간 제한: {{seconds}}초",
+        "rows": "쿼리당 최대 행 수: {{count}}",
+        "rowsUnlimited": "쿼리당 최대 행 수: 제한 없음(보안에서 설정하세요).",
+        "rateLimit": "세션당 속도 제한: {{state}}",
+        "idle": "10분 동안 유휴 상태인 세션은 종료됩니다.",
+        "audit": "모든 호출은 소스 “mcp”로 감사 로그에 기록됩니다."
+      }
     }
   },
   "table": {

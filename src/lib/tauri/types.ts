@@ -83,6 +83,8 @@ export interface SavedConnection {
   driver: string;
   environment: Environment;
   read_only: boolean;
+  /** Opt-in: visible to AI agents through the MCP server and the CLI. */
+  expose_to_agents?: boolean;
   host: string;
   port: number;
   username: string;
@@ -138,6 +140,8 @@ export interface SafetyPolicy {
   prod_require_confirmation: boolean;
   prod_block_dangerous_sql: boolean;
   query_rate_limit_enabled?: boolean;
+  max_query_duration_ms?: number | null;
+  max_result_rows?: number | null;
 }
 
 export interface SafetyPolicyResponse {

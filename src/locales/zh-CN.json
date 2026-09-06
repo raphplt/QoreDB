@@ -931,7 +931,8 @@
       "plugins": "插件",
       "license": "许可证",
       "ai": "AI 助手",
-      "admin": "管理"
+      "admin": "管理",
+      "agents": "AI 代理"
     },
     "search": {
       "placeholder": "搜索设置…",
@@ -1023,6 +1024,45 @@
       "passwordReset": "已重置 {{email}} 的密码。",
       "resetFailed": "重置密码失败",
       "loadFailed": "加载用户失败"
+    },
+    "agents": {
+      "status": {
+        "title": "MCP 服务器",
+        "description": "随 QoreDB 一起分发的 qore-mcp 二进制文件,供 Claude、Cursor 及其他 MCP 客户端使用。",
+        "loading": "检测中…",
+        "found": "已检测到",
+        "notFound": "未找到",
+        "path": "路径",
+        "version": "版本",
+        "hint": "从发布资产安装 qore-mcp,或使用 cargo build -p qore-mcp 构建后放入 PATH。"
+      },
+      "config": {
+        "title": "客户端配置",
+        "description": "复制适用于您客户端的片段。路径指向检测到的二进制文件。",
+        "claudeDesktop": "Claude Desktop (claude_desktop_config.json)",
+        "claudeCode": "Claude Code",
+        "cursor": "Cursor (.cursor/mcp.json)",
+        "copy": "复制",
+        "copied": "已复制",
+        "copyFailed": "无法复制到剪贴板"
+      },
+      "connections": {
+        "title": "已公开的连接",
+        "description": "开启 AI 代理可以读取的连接。默认关闭,包括此版本之前保存的连接。",
+        "empty": "还没有已保存的连接。请在侧边栏创建一个,然后在此处公开。",
+        "toggle": "向 AI 代理公开"
+      },
+      "limits": {
+        "title": "生效的限制",
+        "description": "无论连接如何设置,这些防护措施都适用于每次代理调用。",
+        "readOnly": "只读:即使连接保存时未启用只读模式,写入也会被拒绝。",
+        "timeout": "查询超时:{{seconds}} 秒",
+        "rows": "每次查询最大行数:{{count}}",
+        "rowsUnlimited": "每次查询最大行数:无限制(可在“安全”中设置)。",
+        "rateLimit": "每个会话的速率限制:{{state}}",
+        "idle": "空闲 10 分钟的会话将被关闭。",
+        "audit": "每次调用都会以来源“mcp”写入审计日志。"
+      }
     }
   },
   "table": {
