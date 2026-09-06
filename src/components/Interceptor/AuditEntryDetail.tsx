@@ -160,10 +160,14 @@ export function AuditEntryDetail({
               )}
             </div>
 
-            {entry.blocked && entry.safety_rule && (
+            {entry.safety_rule && (
               <div>
                 <Label className="text-sm font-medium text-yellow-600">
-                  {t('interceptor.audit.detail.blockedBy')}
+                  {t(
+                    entry.blocked
+                      ? 'interceptor.audit.detail.blockedBy'
+                      : 'interceptor.audit.detail.flaggedBy'
+                  )}
                 </Label>
                 <p className="mt-1 text-sm text-yellow-600">
                   {getSafetyRuleLabel?.(entry.safety_rule) ?? entry.safety_rule}

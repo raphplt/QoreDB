@@ -137,9 +137,9 @@ function AuditEntryItem({ entry, onSelect, getSafetyRuleLabel }: AuditEntryItemP
             )}
           </div>
 
-          {entry.blocked && entry.safety_rule && (
+          {entry.safety_rule && (
             <p className="text-xs text-yellow-600 dark:text-yellow-400">
-              {t('interceptor.audit.blockedBy', {
+              {t(entry.blocked ? 'interceptor.audit.blockedBy' : 'interceptor.audit.flaggedBy', {
                 rule: getSafetyRuleLabel?.(entry.safety_rule) ?? entry.safety_rule,
               })}
             </p>

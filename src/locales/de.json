@@ -2124,7 +2124,8 @@
         "fingerprint": "Fingerabdruck",
         "filterByFingerprint": "Nach diesem Fingerabdruck filtern",
         "blockedBy": "Blockiert durch Sicherheitsregel",
-        "error": "Fehler"
+        "error": "Fehler",
+        "flaggedBy": "Durch Regel markiert"
       },
       "stats": {
         "total": "Abfragen gesamt",
@@ -2133,7 +2134,13 @@
         "success": "Erfolgreich",
         "failed": "Fehlgeschlagen",
         "lastHour": "Letzte Stunde"
-      }
+      },
+      "tabs": {
+        "audit": "Audit-Log",
+        "profiling": "Profiling",
+        "trends": "Trends"
+      },
+      "flaggedBy": "Markiert durch: {{rule}}"
     },
     "profiling": {
       "title": "Abfrage-Profiling",
@@ -2184,7 +2191,11 @@
       "environments": {
         "title": "Nach Umgebung"
       },
-      "period": "Daten erfasst seit {{date}}"
+      "period": "Daten erfasst seit {{date}}",
+      "alertErrorRate": "Fehlerraten-Alarm",
+      "alertErrorRateDescription": "Benachrichtigen, wenn die Fehlerrate über 15 Minuten diesen Prozentsatz erreicht. 0 deaktiviert den Alarm.",
+      "alertSlowQueries": "Alarm für langsame Abfragen",
+      "alertSlowQueriesDescription": "Benachrichtigen, wenn so viele langsame Abfragen innerhalb von 15 Minuten liefen. 0 deaktiviert den Alarm."
     },
     "safety": {
       "title": "Sicherheitsnetz",
@@ -2212,7 +2223,10 @@
         "builtin-confirm-delete-production": "DELETE in Produktion bestätigen",
         "builtin-confirm-update-no-where": "UPDATE ohne WHERE bestätigen",
         "builtin-confirm-delete-no-where": "DELETE ohne WHERE bestätigen",
-        "builtin-warn-alter-production": "ALTER in Produktion warnen"
+        "builtin-warn-alter-production": "ALTER in Produktion warnen",
+        "n_plus_one": "N+1-Muster",
+        "alert_error_rate": "Fehlerraten-Alarm",
+        "alert_slow_queries": "Alarm für langsame Abfragen"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Verhindert DROP-Anweisungen in Produktionsumgebungen",
@@ -2220,7 +2234,10 @@
         "builtin-confirm-delete-production": "Erfordert Bestätigung für DELETE-Anweisungen in der Produktion",
         "builtin-confirm-update-no-where": "Erfordert Bestätigung für UPDATE-Anweisungen ohne WHERE-Klausel",
         "builtin-confirm-delete-no-where": "Erfordert Bestätigung für DELETE-Anweisungen ohne WHERE-Klausel",
-        "builtin-warn-alter-production": "Warnt vor ALTER-Anweisungen in der Produktion"
+        "builtin-warn-alter-production": "Warnt vor ALTER-Anweisungen in der Produktion",
+        "n_plus_one": "Dieselbe Abfrage lief 20-mal oder öfter innerhalb von zwei Sekunden in einer Sitzung.",
+        "alert_error_rate": "Die Fehlerrate der letzten 15 Minuten hat den konfigurierten Schwellenwert erreicht.",
+        "alert_slow_queries": "Die Anzahl langsamer Abfragen der letzten 15 Minuten hat den konfigurierten Schwellenwert erreicht."
       },
       "action": {
         "block": "Blockieren",
@@ -2307,6 +2324,27 @@
       "maxConcurrentDescription": "Maximale Anzahl gleichzeitig laufender Abfragen",
       "maxConcurrentPlaceholder": "Kein Limit",
       "resultsTruncated": "Ergebnisse gekürzt: {{max}} von {{total}} Zeilen angezeigt"
+    },
+    "trends": {
+      "description": "Die häufigsten Abfragen im Audit-Log, nach Fingerabdruck gruppiert, mit ihrem täglichen P95.",
+      "days": "Letzte {{count}} Tage",
+      "empty": "Keine ausgeführte Abfrage in diesem Zeitraum.",
+      "loadError": "Trends konnten nicht geladen werden",
+      "columns": {
+        "query": "Abfrage",
+        "count": "Ausführungen",
+        "errorRate": "Fehler",
+        "sparkline": "P95 pro Tag"
+      },
+      "regression": "Regression",
+      "regressionDetail": "P95 {{recent}} in den letzten 24 h gegenüber {{baseline}} in den sieben Tagen davor ({{count}} Ausführungen)"
+    },
+    "alerts": {
+      "nPlusOne": "Mögliches N+1: dieselbe Abfrage lief {{count}}-mal innerhalb von zwei Sekunden",
+      "errorRate": "Fehlerrate bei {{percent}} % in den letzten 15 Minuten ({{total}} Abfragen)",
+      "slowQueries": "{{count}} langsame Abfragen in den letzten 15 Minuten",
+      "open": "Trends öffnen",
+      "badge": "{{count}} Leistungsalarm(e)"
     }
   },
   "titlebar": {

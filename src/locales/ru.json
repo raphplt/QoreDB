@@ -2142,7 +2142,8 @@
         "fingerprint": "Отпечаток",
         "filterByFingerprint": "Фильтровать по этому отпечатку",
         "blockedBy": "Заблокировано правилом безопасности",
-        "error": "Ошибка"
+        "error": "Ошибка",
+        "flaggedBy": "Отмечено правилом"
       },
       "stats": {
         "total": "Всего запросов",
@@ -2151,7 +2152,13 @@
         "success": "Успешных",
         "failed": "Неудачных",
         "lastHour": "За последний час"
-      }
+      },
+      "tabs": {
+        "audit": "Журнал аудита",
+        "profiling": "Профилирование",
+        "trends": "Тренды"
+      },
+      "flaggedBy": "Отмечено правилом: {{rule}}"
     },
     "profiling": {
       "title": "Профилирование запросов",
@@ -2202,7 +2209,11 @@
       "environments": {
         "title": "По средам"
       },
-      "period": "Данные собраны с {{date}}"
+      "period": "Данные собраны с {{date}}",
+      "alertErrorRate": "Оповещение о доле ошибок",
+      "alertErrorRateDescription": "Уведомлять, когда доля ошибок за 15 минут достигает этого процента. 0 отключает оповещение.",
+      "alertSlowQueries": "Оповещение о медленных запросах",
+      "alertSlowQueriesDescription": "Уведомлять, когда за 15 минут выполнено столько медленных запросов. 0 отключает оповещение."
     },
     "safety": {
       "title": "Защитная сеть",
@@ -2230,7 +2241,10 @@
         "builtin-confirm-delete-production": "Подтверждение DELETE в продакшене",
         "builtin-confirm-update-no-where": "Подтверждение UPDATE без WHERE",
         "builtin-confirm-delete-no-where": "Подтверждение DELETE без WHERE",
-        "builtin-warn-alter-production": "Предупреждение ALTER в продакшене"
+        "builtin-warn-alter-production": "Предупреждение ALTER в продакшене",
+        "n_plus_one": "Шаблон N+1",
+        "alert_error_rate": "Оповещение о доле ошибок",
+        "alert_slow_queries": "Оповещение о медленных запросах"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Запрещает выполнение DROP в продакшен-средах",
@@ -2238,7 +2252,10 @@
         "builtin-confirm-delete-production": "Требует подтверждение для DELETE в продакшене",
         "builtin-confirm-update-no-where": "Требует подтверждение для UPDATE без условия WHERE",
         "builtin-confirm-delete-no-where": "Требует подтверждение для DELETE без условия WHERE",
-        "builtin-warn-alter-production": "Предупреждает перед выполнением ALTER в продакшене"
+        "builtin-warn-alter-production": "Предупреждает перед выполнением ALTER в продакшене",
+        "n_plus_one": "Один и тот же запрос выполнен 20 и более раз за две секунды в одной сессии.",
+        "alert_error_rate": "Доля ошибок за последние 15 минут достигла заданного порога.",
+        "alert_slow_queries": "Число медленных запросов за последние 15 минут достигло заданного порога."
       },
       "action": {
         "block": "Блокировать",
@@ -2325,6 +2342,27 @@
       "maxConcurrentDescription": "Максимальное количество одновременно выполняемых запросов",
       "maxConcurrentPlaceholder": "Без ограничения",
       "resultsTruncated": "Результаты усечены: показано {{max}} из {{total}} строк"
+    },
+    "trends": {
+      "description": "Самые частые запросы журнала аудита, сгруппированные по отпечатку, с ежедневным P95.",
+      "days": "Последние {{count}} дн.",
+      "empty": "За этот период запросы не выполнялись.",
+      "loadError": "Не удалось загрузить тренды",
+      "columns": {
+        "query": "Запрос",
+        "count": "Выполнений",
+        "errorRate": "Ошибки",
+        "sparkline": "P95 по дням"
+      },
+      "regression": "Регрессия",
+      "regressionDetail": "P95 {{recent}} за последние 24 ч против {{baseline}} за предыдущие семь дней ({{count}} выполнений)"
+    },
+    "alerts": {
+      "nPlusOne": "Возможный N+1: один и тот же запрос выполнен {{count}} раз за две секунды",
+      "errorRate": "Доля ошибок {{percent}} % за последние 15 минут ({{total}} запросов)",
+      "slowQueries": "{{count}} медленных запросов за последние 15 минут",
+      "open": "Открыть тренды",
+      "badge": "Оповещений о производительности: {{count}}"
     }
   },
   "titlebar": {

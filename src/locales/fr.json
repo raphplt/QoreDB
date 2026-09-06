@@ -2163,7 +2163,8 @@
         "fingerprint": "Empreinte",
         "filterByFingerprint": "Filtrer par cette empreinte",
         "blockedBy": "Bloquée par une règle de sécurité",
-        "error": "Erreur"
+        "error": "Erreur",
+        "flaggedBy": "Signalé par la règle"
       },
       "stats": {
         "total": "Total des requêtes",
@@ -2172,7 +2173,13 @@
         "success": "Réussies",
         "failed": "Échouées",
         "lastHour": "Dernière heure"
-      }
+      },
+      "tabs": {
+        "audit": "Journal d'audit",
+        "profiling": "Profilage",
+        "trends": "Tendances"
+      },
+      "flaggedBy": "Signalé par : {{rule}}"
     },
     "profiling": {
       "title": "Profilage des requêtes",
@@ -2223,7 +2230,11 @@
       "environments": {
         "title": "Par environnement"
       },
-      "period": "Données collectées depuis {{date}}"
+      "period": "Données collectées depuis {{date}}",
+      "alertErrorRate": "Alerte de taux d'erreur",
+      "alertErrorRateDescription": "Notifier quand le taux d'erreur sur 15 minutes atteint ce pourcentage. 0 désactive l'alerte.",
+      "alertSlowQueries": "Alerte de requêtes lentes",
+      "alertSlowQueriesDescription": "Notifier quand autant de requêtes lentes ont été exécutées en 15 minutes. 0 désactive l'alerte."
     },
     "safety": {
       "title": "Filet de sécurité",
@@ -2251,7 +2262,10 @@
         "builtin-confirm-delete-production": "Confirmer DELETE en production",
         "builtin-confirm-update-no-where": "Confirmer UPDATE sans WHERE",
         "builtin-confirm-delete-no-where": "Confirmer DELETE sans WHERE",
-        "builtin-warn-alter-production": "Avertir ALTER en production"
+        "builtin-warn-alter-production": "Avertir ALTER en production",
+        "n_plus_one": "Motif N+1",
+        "alert_error_rate": "Alerte de taux d'erreur",
+        "alert_slow_queries": "Alerte de requêtes lentes"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Empêche les instructions DROP en environnement de production",
@@ -2259,7 +2273,10 @@
         "builtin-confirm-delete-production": "Exige une confirmation pour les DELETE en production",
         "builtin-confirm-update-no-where": "Exige une confirmation pour les UPDATE sans clause WHERE",
         "builtin-confirm-delete-no-where": "Exige une confirmation pour les DELETE sans clause WHERE",
-        "builtin-warn-alter-production": "Avertit avant les instructions ALTER en production"
+        "builtin-warn-alter-production": "Avertit avant les instructions ALTER en production",
+        "n_plus_one": "La même requête a été exécutée 20 fois ou plus en deux secondes sur une session.",
+        "alert_error_rate": "Le taux d'erreur des 15 dernières minutes a atteint le seuil configuré.",
+        "alert_slow_queries": "Le nombre de requêtes lentes des 15 dernières minutes a atteint le seuil configuré."
       },
       "action": {
         "block": "Bloquer",
@@ -2346,6 +2363,27 @@
       "maxConcurrentDescription": "Nombre maximum de requêtes en cours d'exécution simultanément",
       "maxConcurrentPlaceholder": "Pas de limite",
       "resultsTruncated": "Résultats tronqués : {{max}} sur {{total}} lignes affichées"
+    },
+    "trends": {
+      "description": "Les requêtes les plus fréquentes du journal d'audit, regroupées par empreinte, avec leur P95 quotidien.",
+      "days": "{{count}} derniers jours",
+      "empty": "Aucune requête exécutée sur cette période.",
+      "loadError": "Impossible de charger les tendances",
+      "columns": {
+        "query": "Requête",
+        "count": "Exécutions",
+        "errorRate": "Erreurs",
+        "sparkline": "P95 par jour"
+      },
+      "regression": "Régression",
+      "regressionDetail": "P95 de {{recent}} sur les dernières 24 h contre {{baseline}} les sept jours précédents ({{count}} exécutions)"
+    },
+    "alerts": {
+      "nPlusOne": "N+1 probable : la même requête exécutée {{count}} fois en deux secondes",
+      "errorRate": "Taux d'erreur à {{percent}} % sur les 15 dernières minutes ({{total}} requêtes)",
+      "slowQueries": "{{count}} requêtes lentes dans les 15 dernières minutes",
+      "open": "Voir les tendances",
+      "badge": "{{count}} alerte(s) de performance"
     }
   },
   "titlebar": {

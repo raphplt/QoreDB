@@ -2115,7 +2115,8 @@
         "fingerprint": "지문",
         "filterByFingerprint": "이 지문으로 필터링",
         "blockedBy": "안전 규칙에 의해 차단됨",
-        "error": "오류"
+        "error": "오류",
+        "flaggedBy": "규칙에 의해 표시됨"
       },
       "stats": {
         "total": "전체 쿼리",
@@ -2124,7 +2125,13 @@
         "success": "성공",
         "failed": "실패",
         "lastHour": "최근 1시간"
-      }
+      },
+      "tabs": {
+        "audit": "감사 로그",
+        "profiling": "프로파일링",
+        "trends": "추세"
+      },
+      "flaggedBy": "표시 규칙: {{rule}}"
     },
     "profiling": {
       "title": "쿼리 프로파일링",
@@ -2175,7 +2182,11 @@
       "environments": {
         "title": "환경별"
       },
-      "period": "{{date}}부터 수집된 데이터"
+      "period": "{{date}}부터 수집된 데이터",
+      "alertErrorRate": "오류율 알림",
+      "alertErrorRateDescription": "15분 동안의 오류율이 이 비율에 도달하면 알립니다. 0이면 비활성화됩니다.",
+      "alertSlowQueries": "느린 쿼리 알림",
+      "alertSlowQueriesDescription": "15분 이내에 이만큼의 느린 쿼리가 실행되면 알립니다. 0이면 비활성화됩니다."
     },
     "safety": {
       "title": "안전망",
@@ -2203,7 +2214,10 @@
         "builtin-confirm-delete-production": "프로덕션에서 DELETE 확인",
         "builtin-confirm-update-no-where": "WHERE 없는 UPDATE 확인",
         "builtin-confirm-delete-no-where": "WHERE 없는 DELETE 확인",
-        "builtin-warn-alter-production": "프로덕션에서 ALTER 경고"
+        "builtin-warn-alter-production": "프로덕션에서 ALTER 경고",
+        "n_plus_one": "N+1 패턴",
+        "alert_error_rate": "오류율 알림",
+        "alert_slow_queries": "느린 쿼리 알림"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "프로덕션 환경에서 DROP 문을 방지합니다",
@@ -2211,7 +2225,10 @@
         "builtin-confirm-delete-production": "프로덕션에서 DELETE 문에 대한 확인을 요청합니다",
         "builtin-confirm-update-no-where": "WHERE 절 없는 UPDATE 문에 대한 확인을 요청합니다",
         "builtin-confirm-delete-no-where": "WHERE 절 없는 DELETE 문에 대한 확인을 요청합니다",
-        "builtin-warn-alter-production": "프로덕션에서 ALTER 문 전에 경고합니다"
+        "builtin-warn-alter-production": "프로덕션에서 ALTER 문 전에 경고합니다",
+        "n_plus_one": "같은 쿼리가 한 세션에서 2초 안에 20번 이상 실행되었습니다.",
+        "alert_error_rate": "최근 15분간의 오류율이 설정한 임계값에 도달했습니다.",
+        "alert_slow_queries": "최근 15분간의 느린 쿼리 수가 설정한 임계값에 도달했습니다."
       },
       "action": {
         "block": "차단",
@@ -2298,6 +2315,27 @@
       "maxConcurrentDescription": "동시에 실행되는 최대 쿼리 수",
       "maxConcurrentPlaceholder": "제한 없음",
       "resultsTruncated": "결과 잘림: {{total}}개 중 {{max}}개 행 표시"
+    },
+    "trends": {
+      "description": "감사 로그에서 가장 자주 실행된 쿼리를 지문별로 묶고 일별 P95를 표시합니다.",
+      "days": "최근 {{count}}일",
+      "empty": "이 기간에 실행된 쿼리가 없습니다.",
+      "loadError": "추세를 불러올 수 없습니다",
+      "columns": {
+        "query": "쿼리",
+        "count": "실행 횟수",
+        "errorRate": "오류",
+        "sparkline": "일별 P95"
+      },
+      "regression": "회귀",
+      "regressionDetail": "최근 24시간 P95 {{recent}}, 이전 7일 {{baseline}} ({{count}}회 실행)"
+    },
+    "alerts": {
+      "nPlusOne": "N+1 가능성: 같은 쿼리가 2초 안에 {{count}}번 실행됨",
+      "errorRate": "최근 15분 오류율 {{percent}}% ({{total}}개 쿼리)",
+      "slowQueries": "최근 15분 동안 느린 쿼리 {{count}}개",
+      "open": "추세 열기",
+      "badge": "성능 알림 {{count}}건"
     }
   },
   "titlebar": {

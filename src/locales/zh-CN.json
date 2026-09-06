@@ -2115,7 +2115,8 @@
         "fingerprint": "指纹",
         "filterByFingerprint": "按此指纹过滤",
         "blockedBy": "被安全规则阻止",
-        "error": "错误"
+        "error": "错误",
+        "flaggedBy": "由规则标记"
       },
       "stats": {
         "total": "总查询数",
@@ -2124,7 +2125,13 @@
         "success": "成功",
         "failed": "失败",
         "lastHour": "最近一小时"
-      }
+      },
+      "tabs": {
+        "audit": "审计日志",
+        "profiling": "性能分析",
+        "trends": "趋势"
+      },
+      "flaggedBy": "标记规则:{{rule}}"
     },
     "profiling": {
       "title": "查询性能分析",
@@ -2175,7 +2182,11 @@
       "environments": {
         "title": "按环境"
       },
-      "period": "数据收集自 {{date}}"
+      "period": "数据收集自 {{date}}",
+      "alertErrorRate": "错误率告警",
+      "alertErrorRateDescription": "当 15 分钟内的错误率达到此百分比时通知。0 表示禁用。",
+      "alertSlowQueries": "慢查询告警",
+      "alertSlowQueriesDescription": "当 15 分钟内执行了这么多慢查询时通知。0 表示禁用。"
     },
     "safety": {
       "title": "安全网",
@@ -2203,7 +2214,10 @@
         "builtin-confirm-delete-production": "在生产环境中确认 DELETE",
         "builtin-confirm-update-no-where": "确认不带 WHERE 的 UPDATE",
         "builtin-confirm-delete-no-where": "确认不带 WHERE 的 DELETE",
-        "builtin-warn-alter-production": "在生产环境中警告 ALTER"
+        "builtin-warn-alter-production": "在生产环境中警告 ALTER",
+        "n_plus_one": "N+1 模式",
+        "alert_error_rate": "错误率告警",
+        "alert_slow_queries": "慢查询告警"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "阻止在生产环境中执行 DROP 语句",
@@ -2211,7 +2225,10 @@
         "builtin-confirm-delete-production": "在生产环境中执行 DELETE 语句需要确认",
         "builtin-confirm-update-no-where": "不带 WHERE 子句的 UPDATE 语句需要确认",
         "builtin-confirm-delete-no-where": "不带 WHERE 子句的 DELETE 语句需要确认",
-        "builtin-warn-alter-production": "在生产环境中执行 ALTER 语句前发出警告"
+        "builtin-warn-alter-production": "在生产环境中执行 ALTER 语句前发出警告",
+        "n_plus_one": "同一查询在一个会话中两秒内执行了 20 次或更多。",
+        "alert_error_rate": "最近 15 分钟的错误率达到了配置的阈值。",
+        "alert_slow_queries": "最近 15 分钟的慢查询数量达到了配置的阈值。"
       },
       "action": {
         "block": "阻止",
@@ -2298,6 +2315,27 @@
       "maxConcurrentDescription": "同时运行的最大查询数",
       "maxConcurrentPlaceholder": "无限制",
       "resultsTruncated": "结果已截断：显示 {{total}} 行中的 {{max}} 行"
+    },
+    "trends": {
+      "description": "审计日志中最频繁的查询,按指纹分组,并显示每日 P95。",
+      "days": "最近 {{count}} 天",
+      "empty": "此时间段内没有执行过查询。",
+      "loadError": "无法加载查询趋势",
+      "columns": {
+        "query": "查询",
+        "count": "执行次数",
+        "errorRate": "错误",
+        "sparkline": "每日 P95"
+      },
+      "regression": "回归",
+      "regressionDetail": "最近 24 小时 P95 为 {{recent}},之前 7 天为 {{baseline}}({{count}} 次执行)"
+    },
+    "alerts": {
+      "nPlusOne": "疑似 N+1:同一查询在两秒内执行了 {{count}} 次",
+      "errorRate": "最近 15 分钟错误率 {{percent}}%({{total}} 条查询)",
+      "slowQueries": "最近 15 分钟有 {{count}} 条慢查询",
+      "open": "打开趋势",
+      "badge": "{{count}} 条性能告警"
     }
   },
   "titlebar": {

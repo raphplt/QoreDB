@@ -1,17 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LicenseGate } from '@/components/License/LicenseGate';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { AuditLogTab } from '@/lib/stores/modalStore';
+import { cn } from '@/lib/utils';
 import { AuditLogPanel } from './AuditLogPanel';
+import { ProfilingPanel } from './ProfilingPanel';
+import { QueryTrendsPanel } from './QueryTrendsPanel';
 
 interface AuditLogModalProps {
   isOpen: boolean;
+  initialTab: AuditLogTab;
   onClose: () => void;
 }
 
-export function AuditLogModal({ isOpen, onClose }: AuditLogModalProps) {
+const TABS: AuditLogTab[] = ['audit', 'profiling', 'trends'];
+
+export function AuditLogModal({ isOpen, initialTab, onClose }: AuditLogModalProps) {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<AuditLogTab>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) setTab(initialTab);
+  }, [isOpen, initialTab]);
 
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -25,8 +39,29 @@ export function AuditLogModal({ isOpen, onClose }: AuditLogModalProps) {
             {t('interceptor.audit.title')}
           </DialogTitle>
         </DialogHeader>
+        <div className="flex gap-1 px-2 py-1.5 border-b border-border">
+          {TABS.map(id => (
+            <button
+              key={id}
+              type="button"
+              className={cn(
+                'px-3 py-1 text-sm rounded transition-colors',
+                tab === id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+              )}
+              onClick={() => setTab(id)}
+            >
+              {t(`interceptor.audit.tabs.${id}`)}
+            </button>
+          ))}
+        </div>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <AuditLogPanel />
+          {tab === 'audit' && <AuditLogPanel />}
+          {tab === 'profiling' && (
+            <LicenseGate feature="profiling">
+              <ProfilingPanel />
+            </LicenseGate>
+          )}
+          {tab === 'trends' && <QueryTrendsPanel />}
         </div>
       </DialogContent>
     </Dialog>

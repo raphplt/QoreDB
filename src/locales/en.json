@@ -2163,7 +2163,8 @@
         "fingerprint": "Fingerprint",
         "filterByFingerprint": "Filter by this fingerprint",
         "blockedBy": "Blocked by Safety Rule",
-        "error": "Error"
+        "error": "Error",
+        "flaggedBy": "Flagged by rule"
       },
       "stats": {
         "total": "Total queries",
@@ -2172,7 +2173,13 @@
         "success": "Successful",
         "failed": "Failed",
         "lastHour": "Last hour"
-      }
+      },
+      "tabs": {
+        "audit": "Audit log",
+        "profiling": "Profiling",
+        "trends": "Trends"
+      },
+      "flaggedBy": "Flagged by: {{rule}}"
     },
     "profiling": {
       "title": "Query Profiling",
@@ -2223,7 +2230,11 @@
       "environments": {
         "title": "By Environment"
       },
-      "period": "Data collected from {{date}}"
+      "period": "Data collected from {{date}}",
+      "alertErrorRate": "Error-rate alert",
+      "alertErrorRateDescription": "Notify when the error rate over 15 minutes reaches this percentage. 0 disables the alert.",
+      "alertSlowQueries": "Slow-query alert",
+      "alertSlowQueriesDescription": "Notify when this many slow queries ran within 15 minutes. 0 disables the alert."
     },
     "safety": {
       "title": "Safety Net",
@@ -2251,7 +2262,10 @@
         "builtin-confirm-delete-production": "Confirm DELETE in Production",
         "builtin-confirm-update-no-where": "Confirm UPDATE without WHERE",
         "builtin-confirm-delete-no-where": "Confirm DELETE without WHERE",
-        "builtin-warn-alter-production": "Warn ALTER in Production"
+        "builtin-warn-alter-production": "Warn ALTER in Production",
+        "n_plus_one": "N+1 pattern",
+        "alert_error_rate": "Error-rate alert",
+        "alert_slow_queries": "Slow-query alert"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Prevents DROP statements in production environments",
@@ -2259,7 +2273,10 @@
         "builtin-confirm-delete-production": "Requires confirmation for DELETE statements in production",
         "builtin-confirm-update-no-where": "Requires confirmation for UPDATE statements without WHERE clause",
         "builtin-confirm-delete-no-where": "Requires confirmation for DELETE statements without WHERE clause",
-        "builtin-warn-alter-production": "Warns before ALTER statements in production"
+        "builtin-warn-alter-production": "Warns before ALTER statements in production",
+        "n_plus_one": "The same query ran 20 times or more within two seconds on one session.",
+        "alert_error_rate": "The error rate over the last 15 minutes reached the configured threshold.",
+        "alert_slow_queries": "The number of slow queries over the last 15 minutes reached the configured threshold."
       },
       "action": {
         "block": "Block",
@@ -2346,6 +2363,27 @@
       "maxConcurrentDescription": "Maximum number of queries running simultaneously",
       "maxConcurrentPlaceholder": "No limit",
       "resultsTruncated": "Results truncated: showing {{max}} of {{total}} rows"
+    },
+    "trends": {
+      "description": "The most frequent queries in the audit log, grouped by fingerprint, with their daily P95.",
+      "days": "Last {{count}} days",
+      "empty": "No executed query in this window.",
+      "loadError": "Could not load query trends",
+      "columns": {
+        "query": "Query",
+        "count": "Runs",
+        "errorRate": "Errors",
+        "sparkline": "P95 per day"
+      },
+      "regression": "Regression",
+      "regressionDetail": "P95 {{recent}} over the last 24 h against {{baseline}} the seven days before ({{count}} runs)"
+    },
+    "alerts": {
+      "nPlusOne": "Possible N+1: the same query ran {{count}} times within two seconds",
+      "errorRate": "Error rate at {{percent}}% over the last 15 minutes ({{total}} queries)",
+      "slowQueries": "{{count}} slow queries in the last 15 minutes",
+      "open": "Open trends",
+      "badge": "{{count}} performance alert(s)"
     }
   },
   "titlebar": {

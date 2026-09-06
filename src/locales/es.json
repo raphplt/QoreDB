@@ -2124,7 +2124,8 @@
         "fingerprint": "Huella",
         "filterByFingerprint": "Filtrar por esta huella",
         "blockedBy": "Bloqueada por regla de seguridad",
-        "error": "Error"
+        "error": "Error",
+        "flaggedBy": "Señalado por la regla"
       },
       "stats": {
         "total": "Total de consultas",
@@ -2133,7 +2134,13 @@
         "success": "Exitosas",
         "failed": "Fallidas",
         "lastHour": "Última hora"
-      }
+      },
+      "tabs": {
+        "audit": "Registro de auditoría",
+        "profiling": "Perfilado",
+        "trends": "Tendencias"
+      },
+      "flaggedBy": "Señalado por: {{rule}}"
     },
     "profiling": {
       "title": "Perfilado de consultas",
@@ -2184,7 +2191,11 @@
       "environments": {
         "title": "Por entorno"
       },
-      "period": "Datos recopilados desde {{date}}"
+      "period": "Datos recopilados desde {{date}}",
+      "alertErrorRate": "Alerta de tasa de errores",
+      "alertErrorRateDescription": "Notificar cuando la tasa de errores en 15 minutos alcance este porcentaje. 0 desactiva la alerta.",
+      "alertSlowQueries": "Alerta de consultas lentas",
+      "alertSlowQueriesDescription": "Notificar cuando se hayan ejecutado tantas consultas lentas en 15 minutos. 0 desactiva la alerta."
     },
     "safety": {
       "title": "Red de seguridad",
@@ -2212,7 +2223,10 @@
         "builtin-confirm-delete-production": "Confirmar DELETE en producción",
         "builtin-confirm-update-no-where": "Confirmar UPDATE sin WHERE",
         "builtin-confirm-delete-no-where": "Confirmar DELETE sin WHERE",
-        "builtin-warn-alter-production": "Advertir ALTER en producción"
+        "builtin-warn-alter-production": "Advertir ALTER en producción",
+        "n_plus_one": "Patrón N+1",
+        "alert_error_rate": "Alerta de tasa de errores",
+        "alert_slow_queries": "Alerta de consultas lentas"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Previene sentencias DROP en entornos de producción",
@@ -2220,7 +2234,10 @@
         "builtin-confirm-delete-production": "Requiere confirmación para sentencias DELETE en producción",
         "builtin-confirm-update-no-where": "Requiere confirmación para sentencias UPDATE sin cláusula WHERE",
         "builtin-confirm-delete-no-where": "Requiere confirmación para sentencias DELETE sin cláusula WHERE",
-        "builtin-warn-alter-production": "Advierte antes de sentencias ALTER en producción"
+        "builtin-warn-alter-production": "Advierte antes de sentencias ALTER en producción",
+        "n_plus_one": "La misma consulta se ejecutó 20 veces o más en dos segundos en una sesión.",
+        "alert_error_rate": "La tasa de errores de los últimos 15 minutos alcanzó el umbral configurado.",
+        "alert_slow_queries": "El número de consultas lentas de los últimos 15 minutos alcanzó el umbral configurado."
       },
       "action": {
         "block": "Bloquear",
@@ -2307,6 +2324,27 @@
       "maxConcurrentDescription": "Número máximo de consultas ejecutándose simultáneamente",
       "maxConcurrentPlaceholder": "Sin límite",
       "resultsTruncated": "Resultados truncados: mostrando {{max}} de {{total}} filas"
+    },
+    "trends": {
+      "description": "Las consultas más frecuentes del registro de auditoría, agrupadas por huella, con su P95 diario.",
+      "days": "Últimos {{count}} días",
+      "empty": "Ninguna consulta ejecutada en este periodo.",
+      "loadError": "No se pudieron cargar las tendencias",
+      "columns": {
+        "query": "Consulta",
+        "count": "Ejecuciones",
+        "errorRate": "Errores",
+        "sparkline": "P95 por día"
+      },
+      "regression": "Regresión",
+      "regressionDetail": "P95 de {{recent}} en las últimas 24 h frente a {{baseline}} los siete días anteriores ({{count}} ejecuciones)"
+    },
+    "alerts": {
+      "nPlusOne": "Posible N+1: la misma consulta se ejecutó {{count}} veces en dos segundos",
+      "errorRate": "Tasa de errores del {{percent}} % en los últimos 15 minutos ({{total}} consultas)",
+      "slowQueries": "{{count}} consultas lentas en los últimos 15 minutos",
+      "open": "Ver tendencias",
+      "badge": "{{count}} alerta(s) de rendimiento"
     }
   },
   "titlebar": {

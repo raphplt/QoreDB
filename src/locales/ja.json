@@ -2115,7 +2115,8 @@
         "fingerprint": "フィンガープリント",
         "filterByFingerprint": "このフィンガープリントでフィルター",
         "blockedBy": "安全ルールによりブロック",
-        "error": "エラー"
+        "error": "エラー",
+        "flaggedBy": "ルールによるフラグ"
       },
       "stats": {
         "total": "合計クエリ数",
@@ -2124,7 +2125,13 @@
         "success": "成功",
         "failed": "失敗",
         "lastHour": "直近1時間"
-      }
+      },
+      "tabs": {
+        "audit": "監査ログ",
+        "profiling": "プロファイリング",
+        "trends": "トレンド"
+      },
+      "flaggedBy": "フラグ: {{rule}}"
     },
     "profiling": {
       "title": "クエリプロファイリング",
@@ -2175,7 +2182,11 @@
       "environments": {
         "title": "環境別"
       },
-      "period": "{{date}} からのデータ"
+      "period": "{{date}} からのデータ",
+      "alertErrorRate": "エラー率アラート",
+      "alertErrorRateDescription": "15分間のエラー率がこの割合に達したら通知します。0で無効になります。",
+      "alertSlowQueries": "遅いクエリのアラート",
+      "alertSlowQueriesDescription": "15分以内にこの数の遅いクエリが実行されたら通知します。0で無効になります。"
     },
     "safety": {
       "title": "セーフティネット",
@@ -2203,7 +2214,10 @@
         "builtin-confirm-delete-production": "本番環境で DELETE を確認",
         "builtin-confirm-update-no-where": "WHERE なしの UPDATE を確認",
         "builtin-confirm-delete-no-where": "WHERE なしの DELETE を確認",
-        "builtin-warn-alter-production": "本番環境で ALTER を警告"
+        "builtin-warn-alter-production": "本番環境で ALTER を警告",
+        "n_plus_one": "N+1パターン",
+        "alert_error_rate": "エラー率アラート",
+        "alert_slow_queries": "遅いクエリのアラート"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "本番環境での DROP ステートメントを防止します",
@@ -2211,7 +2225,10 @@
         "builtin-confirm-delete-production": "本番環境での DELETE ステートメントに確認を要求します",
         "builtin-confirm-update-no-where": "WHERE 句のない UPDATE ステートメントに確認を要求します",
         "builtin-confirm-delete-no-where": "WHERE 句のない DELETE ステートメントに確認を要求します",
-        "builtin-warn-alter-production": "本番環境での ALTER ステートメントの前に警告します"
+        "builtin-warn-alter-production": "本番環境での ALTER ステートメントの前に警告します",
+        "n_plus_one": "同じクエリが1つのセッションで2秒以内に20回以上実行されました。",
+        "alert_error_rate": "直近15分間のエラー率が設定したしきい値に達しました。",
+        "alert_slow_queries": "直近15分間の遅いクエリ数が設定したしきい値に達しました。"
       },
       "action": {
         "block": "ブロック",
@@ -2298,6 +2315,27 @@
       "maxConcurrentDescription": "同時に実行できるクエリの最大数",
       "maxConcurrentPlaceholder": "制限なし",
       "resultsTruncated": "結果が切り詰められました: {{total}} 行中 {{max}} 行を表示"
+    },
+    "trends": {
+      "description": "監査ログ内で最も頻繁なクエリをフィンガープリントごとにまとめ、日別のP95を表示します。",
+      "days": "過去{{count}}日",
+      "empty": "この期間に実行されたクエリはありません。",
+      "loadError": "トレンドを読み込めませんでした",
+      "columns": {
+        "query": "クエリ",
+        "count": "実行回数",
+        "errorRate": "エラー",
+        "sparkline": "日別P95"
+      },
+      "regression": "回帰",
+      "regressionDetail": "直近24時間のP95 {{recent}}、その前の7日間は {{baseline}}({{count}}回実行)"
+    },
+    "alerts": {
+      "nPlusOne": "N+1の可能性: 同じクエリが2秒以内に{{count}}回実行されました",
+      "errorRate": "直近15分間のエラー率が{{percent}}%です({{total}}クエリ)",
+      "slowQueries": "直近15分間に{{count}}件の遅いクエリ",
+      "open": "トレンドを開く",
+      "badge": "{{count}}件のパフォーマンスアラート"
     }
   },
   "titlebar": {

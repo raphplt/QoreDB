@@ -2124,7 +2124,8 @@
         "fingerprint": "Impressão",
         "filterByFingerprint": "Filtrar por esta impressão",
         "blockedBy": "Bloqueado por Regra de Segurança",
-        "error": "Erro"
+        "error": "Erro",
+        "flaggedBy": "Sinalizado pela regra"
       },
       "stats": {
         "total": "Total de consultas",
@@ -2133,7 +2134,13 @@
         "success": "Bem-sucedidas",
         "failed": "Com falha",
         "lastHour": "Última hora"
-      }
+      },
+      "tabs": {
+        "audit": "Log de auditoria",
+        "profiling": "Profiling",
+        "trends": "Tendências"
+      },
+      "flaggedBy": "Sinalizado por: {{rule}}"
     },
     "profiling": {
       "title": "Análise de Performance",
@@ -2184,7 +2191,11 @@
       "environments": {
         "title": "Por Ambiente"
       },
-      "period": "Dados coletados desde {{date}}"
+      "period": "Dados coletados desde {{date}}",
+      "alertErrorRate": "Alerta de taxa de erro",
+      "alertErrorRateDescription": "Notificar quando a taxa de erro em 15 minutos atingir esta porcentagem. 0 desativa o alerta.",
+      "alertSlowQueries": "Alerta de consultas lentas",
+      "alertSlowQueriesDescription": "Notificar quando este número de consultas lentas rodar em 15 minutos. 0 desativa o alerta."
     },
     "safety": {
       "title": "Rede de Segurança",
@@ -2212,7 +2223,10 @@
         "builtin-confirm-delete-production": "Confirmar DELETE em Produção",
         "builtin-confirm-update-no-where": "Confirmar UPDATE sem WHERE",
         "builtin-confirm-delete-no-where": "Confirmar DELETE sem WHERE",
-        "builtin-warn-alter-production": "Alertar ALTER em Produção"
+        "builtin-warn-alter-production": "Alertar ALTER em Produção",
+        "n_plus_one": "Padrão N+1",
+        "alert_error_rate": "Alerta de taxa de erro",
+        "alert_slow_queries": "Alerta de consultas lentas"
       },
       "builtinRuleDescriptions": {
         "builtin-no-drop-production": "Impede instruções DROP em ambientes de produção",
@@ -2220,7 +2234,10 @@
         "builtin-confirm-delete-production": "Exige confirmação para instruções DELETE em produção",
         "builtin-confirm-update-no-where": "Exige confirmação para instruções UPDATE sem cláusula WHERE",
         "builtin-confirm-delete-no-where": "Exige confirmação para instruções DELETE sem cláusula WHERE",
-        "builtin-warn-alter-production": "Alerta antes de instruções ALTER em produção"
+        "builtin-warn-alter-production": "Alerta antes de instruções ALTER em produção",
+        "n_plus_one": "A mesma consulta rodou 20 vezes ou mais em dois segundos em uma sessão.",
+        "alert_error_rate": "A taxa de erro dos últimos 15 minutos atingiu o limite configurado.",
+        "alert_slow_queries": "O número de consultas lentas dos últimos 15 minutos atingiu o limite configurado."
       },
       "action": {
         "block": "Bloquear",
@@ -2307,6 +2324,27 @@
       "maxConcurrentDescription": "Número máximo de consultas executando simultaneamente",
       "maxConcurrentPlaceholder": "Sem limite",
       "resultsTruncated": "Resultados truncados: mostrando {{max}} de {{total}} linhas"
+    },
+    "trends": {
+      "description": "As consultas mais frequentes do log de auditoria, agrupadas por impressão digital, com o P95 diário.",
+      "days": "Últimos {{count}} dias",
+      "empty": "Nenhuma consulta executada neste período.",
+      "loadError": "Não foi possível carregar as tendências",
+      "columns": {
+        "query": "Consulta",
+        "count": "Execuções",
+        "errorRate": "Erros",
+        "sparkline": "P95 por dia"
+      },
+      "regression": "Regressão",
+      "regressionDetail": "P95 de {{recent}} nas últimas 24 h contra {{baseline}} nos sete dias anteriores ({{count}} execuções)"
+    },
+    "alerts": {
+      "nPlusOne": "Possível N+1: a mesma consulta rodou {{count}} vezes em dois segundos",
+      "errorRate": "Taxa de erro de {{percent}}% nos últimos 15 minutos ({{total}} consultas)",
+      "slowQueries": "{{count}} consultas lentas nos últimos 15 minutos",
+      "open": "Abrir tendências",
+      "badge": "{{count}} alerta(s) de desempenho"
     }
   },
   "titlebar": {

@@ -62,6 +62,18 @@ export const BUILTIN_SAFETY_RULE_I18N: Record<string, { nameKey: string; descrip
       nameKey: 'interceptor.safety.builtinRuleNames.builtin-warn-alter-production',
       descriptionKey: 'interceptor.safety.builtinRuleDescriptions.builtin-warn-alter-production',
     },
+    n_plus_one: {
+      nameKey: 'interceptor.safety.builtinRuleNames.n_plus_one',
+      descriptionKey: 'interceptor.safety.builtinRuleDescriptions.n_plus_one',
+    },
+    alert_error_rate: {
+      nameKey: 'interceptor.safety.builtinRuleNames.alert_error_rate',
+      descriptionKey: 'interceptor.safety.builtinRuleDescriptions.alert_error_rate',
+    },
+    alert_slow_queries: {
+      nameKey: 'interceptor.safety.builtinRuleNames.alert_slow_queries',
+      descriptionKey: 'interceptor.safety.builtinRuleDescriptions.alert_slow_queries',
+    },
   };
 
 export interface AuditLogEntry {
@@ -134,7 +146,55 @@ export interface InterceptorConfig {
   max_slow_queries: number;
   safety_rules: SafetyRule[];
   builtin_rule_overrides: BuiltinRuleOverride[];
+  /** Error-rate alert over 15 minutes, in percent. Absent or 0 disables it. */
+  alert_error_rate_percent?: number | null;
+  /** Slow-query count alert over 15 minutes. Absent or 0 disables it. */
+  alert_slow_queries_count?: number | null;
 }
+
+export interface TrendPoint {
+  day: string;
+  count: number;
+  p50_ms: number;
+  p95_ms: number;
+  error_rate: number;
+}
+
+export interface Regression {
+  recent_p95_ms: number;
+  baseline_p95_ms: number;
+  recent_count: number;
+}
+
+export interface FingerprintTrend {
+  fingerprint: string;
+  query_preview: string;
+  driver_id: string;
+  database?: string | null;
+  count: number;
+  p50_ms: number;
+  p95_ms: number;
+  error_rate: number;
+  points: TrendPoint[];
+  regression?: Regression;
+}
+
+export interface TrendFilter {
+  days: number;
+  driver_id?: string;
+  database?: string;
+}
+
+export type InterceptorAlert =
+  | {
+      kind: 'n_plus_one';
+      session_id: string;
+      fingerprint: string;
+      query_preview: string;
+      count: number;
+    }
+  | { kind: 'error_rate'; percent: number; threshold: number; total: number }
+  | { kind: 'slow_queries'; count: number; threshold: number };
 
 export interface BuiltinRuleOverride {
   id: string;
@@ -277,6 +337,18 @@ export async function getProfilingMetrics(): Promise<ProfilingMetrics> {
     throw new Error(result.error || 'Failed to get profiling metrics');
   }
   return result.metrics;
+}
+
+export async function getQueryTrends(filter: TrendFilter): Promise<FingerprintTrend[]> {
+  const response = await invoke<{
+    success: boolean;
+    trends: FingerprintTrend[];
+    error?: string;
+  }>('get_query_trends', { filter });
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to load query trends');
+  }
+  return response.trends;
 }
 
 export async function getSlowQueries(limit = 50, offset = 0): Promise<SlowQueryEntry[]> {
