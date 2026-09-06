@@ -70,3 +70,17 @@ QoreDB is a desktop application (Tauri/Rust) that connects to user databases. Th
     to someone. Files on disk stay raw for the user's own debugging.
   - CSP restricts network origins for the webview itself.
   - **Current limitation**: Custom share providers currently accept both `http` and `https`; deployments should prefer HTTPS-only endpoints.
+
+### 7. Agent Surfaces (MCP Server and CLI)
+
+- **Threat**: An AI agent, or any local process able to launch `qore-mcp` or `qore`, reads data it should not, or is steered by hostile data into damaging queries.
+- **Mitigation**:
+  - **Opt-in per connection**: nothing is visible to agents until the user switches the connection on under Settings > AI agents. The flag is stored with the connection and checked before any secret is read, even when the caller already knows the connection id.
+  - **Read-only by construction**: agent sessions are opened with `read_only` forced on, then every statement goes through the same preflight as the editor (SQL, Mongo, Redis and search classification), the safety policy (row cap, duration, rate limit) and the audit log with source `mcp` or `cli`.
+  - **Local transport only**: the MCP server speaks stdio to the client that spawned it; it opens no network listener.
+  - **Bounded lifetime**: sessions idle for ten minutes are closed; the safety policy and the vault are reread on every call so a change in the app applies to the next agent query.
+  - **Store scoping**: the server reads the default vault, or the `.qoredb` workspace it was pointed at or detected from its working directory, never both.
+- **Current limitation**:
+  - The app's master-password lock is not shared: the server reads secrets from the OS keyring directly, so a vault locked in the app stays readable by an agent as long as the keyring is unlocked. The exposure flag is the effective gate.
+  - `resources/list` connects to every exposed connection to enumerate tables, production included.
+  - Query results are returned to the agent and may be sent to a remote model by the client; column masking is not applied yet (planned, see the v0.1.39 scope).
