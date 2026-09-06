@@ -6,9 +6,11 @@ use clap::{Parser, Subcommand};
 
 use std::path::PathBuf;
 
-use qore_core::{CollectionListOptions, Namespace, SessionId};
+use qore_core::{Namespace, SessionId};
 use qore_service::ServiceContext;
 use qore_service::agent_access::{self, AgentVault};
+use qore_service::agent_tools::{self, AgentToolContext};
+use qore_service::interceptor::QuerySource;
 use qore_service::paths::{QUERY_TIMEOUT_MS, config_dir};
 
 #[derive(Parser)]
@@ -75,45 +77,17 @@ async fn run(cli: Cli) -> Result<String, String> {
         }
         Command::Query { connection_id, sql } => {
             let session = connect(&ctx, &vault, &connection_id).await?;
-            let session_id = session.0.to_string();
-            let pf = qore_service::query::preflight(
-                &ctx.session_manager,
-                &ctx.query_rate_limiter,
-                &ctx.interceptor,
-                &ctx.policy,
+            let result = agent_tools::run_query(
+                &AgentToolContext::from_service(&ctx),
                 session,
-                &session_id,
                 &sql,
                 None,
                 false,
+                Some(QUERY_TIMEOUT_MS),
+                QuerySource::Cli,
             )
             .await?;
-            let query_id = ctx.query_manager.register(session).await;
-            let outcome = qore_service::query::execute(
-                &ctx.query_manager,
-                &ctx.query_cache,
-                &ctx.interceptor,
-                &ctx.policy,
-                pf.driver,
-                &pf.context,
-                session,
-                None,
-                &sql,
-                query_id,
-                pf.is_mutation,
-                pf.connection_key.as_deref(),
-                pf.safety_warning.as_deref(),
-                Some(QUERY_TIMEOUT_MS),
-                false,
-                None,
-                None,
-                |_, _| {},
-            )
-            .await;
-            if let Some(err) = outcome.error {
-                return Err(err);
-            }
-            serde_json::to_string_pretty(&outcome.result).map_err(|e| e.to_string())
+            serde_json::to_string_pretty(&result).map_err(|e| e.to_string())
         }
         Command::Tables {
             connection_id,
@@ -121,21 +95,14 @@ async fn run(cli: Cli) -> Result<String, String> {
             schema,
         } => {
             let session = connect(&ctx, &vault, &connection_id).await?;
-            let driver = ctx
-                .session_manager
-                .get_driver(session)
-                .await
-                .map_err(|e| e.sanitized_message())?;
             let namespace = Namespace { database, schema };
-            let options = CollectionListOptions {
-                search: None,
-                page: None,
-                page_size: None,
-            };
-            let list = driver
-                .list_collections(session, &namespace, options)
-                .await
-                .map_err(|e| e.sanitized_message())?;
+            let list = agent_tools::list_tables(
+                &AgentToolContext::from_service(&ctx),
+                session,
+                &namespace,
+                None,
+            )
+            .await?;
             serde_json::to_string_pretty(&list).map_err(|e| e.to_string())
         }
         Command::Describe {
@@ -146,16 +113,14 @@ async fn run(cli: Cli) -> Result<String, String> {
         } => {
             let session = connect(&ctx, &vault, &connection_id).await?;
             let namespace = Namespace { database, schema };
-            let schema_info = qore_service::query::describe_table(
-                &ctx.session_manager,
-                &ctx.virtual_relations,
+            let schema_info = agent_tools::describe_table(
+                &AgentToolContext::from_service(&ctx),
                 session,
                 &namespace,
                 &table,
                 None,
             )
-            .await
-            .map_err(|e| e.sanitized())?;
+            .await?;
             serde_json::to_string_pretty(&schema_info).map_err(|e| e.to_string())
         }
     }
