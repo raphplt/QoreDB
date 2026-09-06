@@ -69,7 +69,7 @@ export function PaginationMetricsPanel({ isOpen, onClose }: PaginationMetricsPan
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent
         disableExitAnimation
-        className="max-w-4xl max-h-[80vh] flex flex-col p-0 gap-0"
+        className="max-w-4xl min-h-[50vh] max-h-[80vh] flex flex-col p-0 gap-0"
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 px-4 py-2.5 border-b border-border pr-12">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
