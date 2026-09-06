@@ -275,6 +275,7 @@ mod tests {
             driver: "postgres".to_string(),
             environment: Environment::Development,
             read_only: false,
+            expose_to_agents: false,
             host: "localhost".to_string(),
             port: 5432,
             username: "qoredb".to_string(),

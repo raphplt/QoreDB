@@ -37,6 +37,9 @@ pub struct SavedConnection {
     pub driver: String,
     pub environment: Environment,
     pub read_only: bool,
+    /// Opt-in: visible to AI agents through the MCP server and the CLI.
+    #[serde(default)]
+    pub expose_to_agents: bool,
     pub host: String,
     pub port: u16,
     pub username: String,
@@ -259,6 +262,7 @@ mod tests {
             driver: "postgres".to_string(),
             environment: Environment::Development,
             read_only: false,
+            expose_to_agents: false,
             host: "localhost".to_string(),
             port: 5432,
             username: "qoredb".to_string(),

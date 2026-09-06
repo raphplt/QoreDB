@@ -307,6 +307,8 @@ pub fn run() {
             commands::schema_export::export_schema,
             // Metrics (dev-only)
             commands::metrics::get_metrics,
+            // AI agents (MCP)
+            commands::agents::agents_mcp_status,
             // Vault commands
             commands::vault::get_vault_status,
             commands::vault::setup_master_password,
@@ -314,6 +316,7 @@ pub fn run() {
             commands::vault::lock_vault,
             commands::vault::save_connection,
             commands::vault::list_saved_connections,
+            commands::vault::set_connection_exposed,
             commands::vault::delete_saved_connection,
             commands::vault::duplicate_saved_connection,
             commands::vault::get_connection_credentials,

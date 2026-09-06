@@ -60,6 +60,9 @@ pub struct SaveConnectionInput {
     pub driver: String,
     pub environment: Environment,
     pub read_only: bool,
+    /// Managed from Settings > AI agents; `None` keeps the stored value.
+    #[serde(default)]
+    pub expose_to_agents: Option<bool>,
     pub host: String,
     pub port: u16,
     pub username: String,
@@ -285,22 +288,22 @@ pub async fn save_connection(
 
     let incoming = IncomingSecrets {
         db_password: input.password.clone(),
-        ssh: input.ssh_tunnel.as_ref().map(|s| {
-            (
-                s.password.clone(),
-                s.key_passphrase.clone(),
-            )
-        }),
+        ssh: input
+            .ssh_tunnel
+            .as_ref()
+            .map(|s| (s.password.clone(), s.key_passphrase.clone())),
         proxy: input.proxy.as_ref().map(|p| p.password.clone()),
     };
 
-    let connection = SavedConnection {
+    let keep_exposure = input.expose_to_agents.is_none();
+    let mut connection = SavedConnection {
         options: input.options.clone(),
         id: input.id.clone(),
         name: input.name,
         driver: input.driver,
         environment: input.environment,
         read_only: input.read_only,
+        expose_to_agents: input.expose_to_agents.unwrap_or(false),
         host: input.host,
         port: input.port,
         username: input.username,
@@ -321,6 +324,12 @@ pub async fn save_connection(
 
     let result = match get_workspace_store(&ws_manager).await {
         Some(ws_store) => {
+            if keep_exposure {
+                connection.expose_to_agents = ws_store
+                    .get_connection(&connection.id)
+                    .map(|c| c.expose_to_agents)
+                    .unwrap_or(false);
+            }
             let previous = ws_store.get_credentials(&connection.id).ok();
             let credentials = incoming.merge_with(previous.as_ref());
             ws_store.save_connection(&connection, &credentials)
@@ -335,6 +344,12 @@ pub async fn save_connection(
                 storage_dir,
                 Box::new(KeyringProvider::new()),
             );
+            if keep_exposure {
+                connection.expose_to_agents = storage
+                    .get_connection(&connection.id)
+                    .map(|c| c.expose_to_agents)
+                    .unwrap_or(false);
+            }
             let previous = storage.get_credentials(&connection.id).ok();
             let credentials = incoming.merge_with(previous.as_ref());
             storage.save_connection(&connection, &credentials)
@@ -351,6 +366,60 @@ pub async fn save_connection(
             error: Some(e.sanitized_message()),
         }),
     }
+}
+
+/// Flips the agent exposure flag without touching credentials.
+#[tauri::command]
+pub async fn set_connection_exposed(
+    app: AppHandle,
+    state: State<'_, SharedState>,
+    ws_manager: State<'_, SharedWorkspaceManager>,
+    project_id: String,
+    connection_id: String,
+    exposed: bool,
+) -> Result<VaultResponse, String> {
+    if state.lock().await.vault_lock.is_locked() {
+        return Ok(VaultResponse {
+            success: false,
+            error: Some("Vault is locked".to_string()),
+        });
+    }
+
+    let result = match get_workspace_store(&ws_manager).await {
+        Some(ws_store) => ws_store
+            .get_connection(&connection_id)
+            .and_then(|mut connection| {
+                let credentials = ws_store.get_credentials(&connection_id)?;
+                connection.expose_to_agents = exposed;
+                ws_store.save_connection(&connection, &credentials)
+            }),
+        None => {
+            let storage_dir = app
+                .path()
+                .app_config_dir()
+                .map_err(|e: tauri::Error| e.to_string())?;
+            let storage =
+                VaultStorage::new(&project_id, storage_dir, Box::new(KeyringProvider::new()));
+            storage
+                .get_connection(&connection_id)
+                .and_then(|mut connection| {
+                    let credentials = storage.get_credentials(&connection_id)?;
+                    connection.expose_to_agents = exposed;
+                    storage.save_connection(&connection, &credentials)
+                })
+        }
+    };
+
+    Ok(match result {
+        Ok(()) => VaultResponse {
+            success: true,
+            error: None,
+        },
+        Err(e) => VaultResponse {
+            success: false,
+            error: Some(e.sanitized_message()),
+        },
+    })
 }
 
 /// Lists all saved connections (metadata only, no passwords)
