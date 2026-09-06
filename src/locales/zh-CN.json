@@ -1050,7 +1050,9 @@
         "title": "已公开的连接",
         "description": "开启 AI 代理可以读取的连接。默认关闭,包括此版本之前保存的连接。",
         "empty": "还没有已保存的连接。请在侧边栏创建一个,然后在此处公开。",
-        "toggle": "向 AI 代理公开"
+        "toggle": "向 AI 代理公开",
+        "storeDefault": "当前存储:默认 vault。从包含 .qoredb 工作区的项目文件夹启动的代理将改为读取该工作区。",
+        "storeWorkspace": "当前存储:工作区 {{path}}。片段会将其传给服务器;从此文件夹启动的 Claude Code 会自动检测。"
       },
       "limits": {
         "title": "生效的限制",

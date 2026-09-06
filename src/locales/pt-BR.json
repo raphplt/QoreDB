@@ -1059,7 +1059,9 @@
         "title": "Conexões expostas",
         "description": "Ative as conexões que os agentes de IA podem ler. Desativado por padrão, inclusive para conexões salvas antes desta versão.",
         "empty": "Nenhuma conexão salva ainda. Crie uma na barra lateral e exponha-a aqui.",
-        "toggle": "Expor a agentes de IA"
+        "toggle": "Expor a agentes de IA",
+        "storeDefault": "Armazenamento em uso: vault padrão. Um agente iniciado em uma pasta de projeto com um workspace .qoredb lê esse workspace em vez disso.",
+        "storeWorkspace": "Armazenamento em uso: workspace {{path}}. Os trechos o passam ao servidor; o Claude Code iniciado nesta pasta o detecta sozinho."
       },
       "limits": {
         "title": "Limites aplicados",

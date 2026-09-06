@@ -30,7 +30,7 @@ interface AgentsSectionProps {
 export function AgentsSection({ searchQuery }: AgentsSectionProps) {
   const { t } = useTranslation();
   const { savedConnections, refreshSidebar } = useSessionContext();
-  const { projectId } = useWorkspace();
+  const { projectId, activeWorkspace } = useWorkspace();
   const [status, setStatus] = useState<McpBinaryStatus | null>(null);
   const [policy, setPolicy] = useState<SafetyPolicy | null>(null);
 
@@ -47,7 +47,9 @@ export function AgentsSection({ searchQuery }: AgentsSectionProps) {
     };
   }, []);
 
-  const snippets = buildMcpSnippets(status?.path ?? 'qore-mcp');
+  const workspacePath =
+    activeWorkspace && activeWorkspace.source !== 'default' ? activeWorkspace.path : undefined;
+  const snippets = buildMcpSnippets(status?.path ?? 'qore-mcp', workspacePath);
 
   return (
     <>
@@ -79,6 +81,11 @@ export function AgentsSection({ searchQuery }: AgentsSectionProps) {
         description={t('settings.agents.connections.description')}
         searchQuery={searchQuery}
       >
+        <p className="mb-3 text-xs text-muted-foreground">
+          {workspacePath
+            ? t('settings.agents.connections.storeWorkspace', { path: workspacePath })
+            : t('settings.agents.connections.storeDefault')}
+        </p>
         <ConnectionExposure
           connections={savedConnections}
           projectId={projectId}

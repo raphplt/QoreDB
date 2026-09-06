@@ -1088,7 +1088,9 @@
         "title": "Exposed connections",
         "description": "Switch on the connections AI agents may read. Off by default, including for connections saved before this version.",
         "empty": "No saved connection yet. Create one from the sidebar, then expose it here.",
-        "toggle": "Expose to AI agents"
+        "toggle": "Expose to AI agents",
+        "storeDefault": "Store in use: default vault. Agents launched from a project folder holding a .qoredb workspace read that workspace instead.",
+        "storeWorkspace": "Store in use: workspace {{path}}. The snippets pass it to the server; Claude Code launched from this folder detects it by itself."
       },
       "limits": {
         "title": "Applied limits",

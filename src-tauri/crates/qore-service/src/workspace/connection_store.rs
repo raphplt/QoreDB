@@ -13,8 +13,9 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::engine::error::{EngineError, EngineResult};
-use crate::observability::Sensitive;
+use qore_core::error::{EngineError, EngineResult};
+
+use crate::sensitive::Sensitive;
 use crate::vault::backend::CredentialProvider;
 use crate::vault::credentials::{SavedConnection, StoredCredentials};
 use crate::workspace::write_registry::WriteRegistry;
@@ -162,7 +163,7 @@ impl WorkspaceConnectionStore {
 
         let file_path = self.connection_file(&connection.id)?;
         self.register_write(&file_path);
-        crate::atomic_write::write_atomic(&file_path, content.as_bytes()).map_err(|e| {
+        crate::paths::atomic_write(&file_path, content.as_bytes()).map_err(|e| {
             EngineError::internal(format!("Failed to write connection file: {}", e))
         })?;
         // Connection metadata (host, username, ssh.key_path) is sensitive — keep

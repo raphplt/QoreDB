@@ -482,7 +482,7 @@ fn load_saved_config(
 
         let store = WorkspaceConnectionStore::new(
             dir.to_path_buf(),
-            format!("qoredb_{}", project_id),
+            qore_service::workspace::keyring_service(&project_id),
             Box::new(KeyringProvider::new()),
         );
         let saved = store

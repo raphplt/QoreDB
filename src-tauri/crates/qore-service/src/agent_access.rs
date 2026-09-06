@@ -5,13 +5,122 @@
 //! read-only mode.
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use qore_core::{ConnectionConfig, SessionId};
+use qore_drivers::session_manager::SessionManager;
 
+use crate::vault::VaultStorage;
+use crate::vault::backend::KeyringProvider;
 use crate::vault::credentials::{SavedConnection, StoredCredentials};
+use crate::workspace::connection_store::WorkspaceConnectionStore;
+use crate::workspace::{DEFAULT_PROJECT_ID, discovery, keyring_service, workspace_project_id};
 
 pub const IDLE_SESSION_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+pub const WORKSPACE_ENV: &str = "QOREDB_WORKSPACE";
+
+/// The connection store an agent surface reads: the default vault, or the
+/// store of a file-based workspace when one is given or detected from the
+/// working directory, exactly as the desktop app does.
+pub enum AgentVault {
+    Default(VaultStorage),
+    Workspace {
+        path: PathBuf,
+        store: WorkspaceConnectionStore,
+    },
+}
+
+impl AgentVault {
+    pub fn open(config_dir: PathBuf, workspace: Option<&Path>) -> Self {
+        match resolve_workspace(workspace) {
+            Some(path) => {
+                let store = WorkspaceConnectionStore::new(
+                    path.join("connections"),
+                    keyring_service(&workspace_project_id(&path)),
+                    Box::new(KeyringProvider::new()),
+                );
+                Self::Workspace { path, store }
+            }
+            None => Self::Default(VaultStorage::new(
+                DEFAULT_PROJECT_ID,
+                config_dir,
+                Box::new(KeyringProvider::new()),
+            )),
+        }
+    }
+
+    pub fn describe(&self) -> String {
+        match self {
+            Self::Default(_) => "default vault".to_string(),
+            Self::Workspace { path, .. } => format!("workspace {}", path.display()),
+        }
+    }
+
+    pub fn list(&self) -> Result<Vec<SavedConnection>, String> {
+        match self {
+            Self::Default(storage) => storage.list_connections_full(),
+            Self::Workspace { store, .. } => store.list_connections(),
+        }
+        .map_err(|e| e.sanitized_message())
+    }
+
+    pub fn exposed(&self) -> Result<Vec<SavedConnection>, String> {
+        self.list().map(exposed_connections)
+    }
+
+    pub fn get(&self, connection_id: &str) -> Result<SavedConnection, String> {
+        match self {
+            Self::Default(storage) => storage.get_connection(connection_id),
+            Self::Workspace { store, .. } => store.get_connection(connection_id),
+        }
+        .map_err(|e| e.sanitized_message())
+    }
+
+    pub fn credentials(&self, connection_id: &str) -> Result<StoredCredentials, String> {
+        match self {
+            Self::Default(storage) => storage.get_credentials(connection_id),
+            Self::Workspace { store, .. } => store.get_credentials(connection_id),
+        }
+        .map_err(|e| e.sanitized_message())
+    }
+}
+
+/// Explicit path first (the `.qoredb/` directory or its parent), then the
+/// `QOREDB_WORKSPACE` variable, then discovery from the working directory.
+pub fn resolve_workspace(explicit: Option<&Path>) -> Option<PathBuf> {
+    let from_env = std::env::var_os(WORKSPACE_ENV).map(PathBuf::from);
+    let candidate = explicit.map(Path::to_path_buf).or(from_env)?;
+    let qoredb = if candidate.file_name().is_some_and(|n| n == ".qoredb") {
+        candidate
+    } else {
+        candidate.join(".qoredb")
+    };
+    qoredb.join("workspace.json").is_file().then_some(qoredb)
+}
+
+pub fn detect_workspace(explicit: Option<&Path>) -> Option<PathBuf> {
+    if explicit.is_some() || std::env::var_os(WORKSPACE_ENV).is_some() {
+        return resolve_workspace(explicit);
+    }
+    discovery::detect_workspace_from_cwd()
+}
+
+/// The one way an agent surface opens a session: exposure is checked before
+/// any secret is read, and the session is always read-only.
+pub async fn open_session(
+    vault: &AgentVault,
+    session_manager: &SessionManager,
+    connection_id: &str,
+) -> Result<SessionId, String> {
+    let saved = vault.get(connection_id)?;
+    require_exposed(&saved)?;
+    let creds = vault.credentials(connection_id)?;
+    let config = agent_connection_config(&saved, &creds)?;
+    crate::connection::connect(session_manager, config)
+        .await
+        .map_err(|e| e.sanitized())
+}
 
 pub fn exposed_connections(all: Vec<SavedConnection>) -> Vec<SavedConnection> {
     all.into_iter().filter(|c| c.expose_to_agents).collect()
@@ -186,6 +295,22 @@ mod tests {
         assert_eq!(evicted, vec![stale]);
         assert_eq!(sessions.get("fresh"), Some(fresh));
         assert_eq!(sessions.get("stale"), None);
+    }
+
+    #[test]
+    fn workspace_resolution_accepts_the_qoredb_dir_or_its_parent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let qoredb = tmp.path().join(".qoredb");
+        std::fs::create_dir_all(&qoredb).unwrap();
+        assert_eq!(resolve_workspace(Some(tmp.path())), None);
+
+        std::fs::write(qoredb.join("workspace.json"), "{}").unwrap();
+        assert_eq!(resolve_workspace(Some(tmp.path())), Some(qoredb.clone()));
+        assert_eq!(resolve_workspace(Some(&qoredb)), Some(qoredb.clone()));
+
+        let vault = AgentVault::open(tmp.path().to_path_buf(), Some(tmp.path()));
+        assert!(matches!(vault, AgentVault::Workspace { .. }));
+        assert_eq!(vault.list().unwrap().len(), 0);
     }
 
     #[test]

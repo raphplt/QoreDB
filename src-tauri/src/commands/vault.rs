@@ -29,7 +29,7 @@ pub(crate) async fn get_workspace_store(
     }
     Some(WorkspaceConnectionStore::new(
         ws.path.join("connections"),
-        format!("qoredb_{}", mgr.project_id()),
+        qore_service::workspace::keyring_service(&mgr.project_id()),
         Box::new(KeyringProvider::new()),
     ))
 }

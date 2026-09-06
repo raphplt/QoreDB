@@ -25,13 +25,10 @@ use tokio::sync::Mutex;
 
 use qore_core::{Namespace, SessionId};
 use qore_service::ServiceContext;
-use qore_service::agent_access::{self, AgentSessions};
+use qore_service::agent_access::{self, AgentSessions, AgentVault};
 use qore_service::agent_tools::{self, AgentToolContext, PREVIEW_MAX_ROWS};
 use qore_service::interceptor::QuerySource;
-use qore_service::paths::{PROJECT_ID, QUERY_TIMEOUT_MS, config_dir};
-use qore_service::vault::VaultStorage;
-use qore_service::vault::backend::KeyringProvider;
-use qore_service::vault::credentials::SavedConnection;
+use qore_service::paths::{QUERY_TIMEOUT_MS, config_dir};
 
 const INSTRUCTIONS: &str = "QoreDB gives read-only access to the database connections the user \
 explicitly exposed to AI agents. Every session is forced read-only, the safety policy applies \
@@ -56,6 +53,7 @@ Writes are never possible from this server; suggest DDL or DML to the user inste
 struct QoreMcp {
     ctx: Arc<ServiceContext>,
     storage_dir: PathBuf,
+    workspace: Option<PathBuf>,
     sessions: Arc<Mutex<AgentSessions>>,
     #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
@@ -159,21 +157,18 @@ fn namespace_of(database: &str, schema: Option<&str>) -> Namespace {
 
 #[tool_router]
 impl QoreMcp {
-    fn new(storage_dir: PathBuf) -> Self {
+    fn new(storage_dir: PathBuf, workspace: Option<PathBuf>) -> Self {
         Self {
             ctx: Arc::new(ServiceContext::new()),
             storage_dir,
+            workspace,
             sessions: Arc::new(Mutex::new(AgentSessions::default())),
             tool_router: Self::tool_router(),
         }
     }
 
-    fn storage(&self) -> VaultStorage {
-        VaultStorage::new(
-            PROJECT_ID,
-            self.storage_dir.clone(),
-            Box::new(KeyringProvider::new()),
-        )
+    fn vault(&self) -> AgentVault {
+        AgentVault::open(self.storage_dir.clone(), self.workspace.as_deref())
     }
 
     fn tool_ctx(&self) -> AgentToolContext {
@@ -187,14 +182,6 @@ impl QoreMcp {
             .policy
             .max_query_duration_ms
             .map_or(QUERY_TIMEOUT_MS, |ms| ms.min(QUERY_TIMEOUT_MS))
-    }
-
-    fn exposed_connections(&self) -> Result<Vec<SavedConnection>, String> {
-        let all = self
-            .storage()
-            .list_connections_full()
-            .map_err(|e| e.sanitized_message())?;
-        Ok(agent_access::exposed_connections(all))
     }
 
     async fn close_idle_sessions(&self) {
@@ -218,19 +205,9 @@ impl QoreMcp {
             return Ok(session);
         }
 
-        let storage = self.storage();
-        let saved = storage
-            .get_connection(connection_id)
-            .map_err(|e| e.sanitized_message())?;
-        agent_access::require_exposed(&saved)?;
-        let creds = storage
-            .get_credentials(connection_id)
-            .map_err(|e| e.sanitized_message())?;
-        let config = agent_access::agent_connection_config(&saved, &creds)?;
-
-        let session = qore_service::connection::connect(&self.ctx.session_manager, config)
-            .await
-            .map_err(|e| e.sanitized())?;
+        let session =
+            agent_access::open_session(&self.vault(), &self.ctx.session_manager, connection_id)
+                .await?;
         self.sessions
             .lock()
             .await
@@ -323,7 +300,7 @@ impl QoreMcp {
 
     #[tool(description = "List the saved connections exposed to AI agents (read-only access)")]
     async fn list_connections(&self) -> Result<CallToolResult, McpError> {
-        let summary = self.exposed_connections().map(|connections| {
+        let summary = self.vault().exposed().map(|connections| {
             connections
                 .iter()
                 .map(agent_access::connection_summary)
@@ -409,7 +386,7 @@ impl QoreMcp {
     async fn table_resources(&self) -> Result<Vec<rmcp::model::Resource>, String> {
         let ctx = self.tool_ctx();
         let mut out = Vec::new();
-        for connection in self.exposed_connections()? {
+        for connection in self.vault().exposed()? {
             let Ok(session) = self.ensure_session(&connection.id).await else {
                 tracing::warn!("skipping unreachable connection {}", connection.id);
                 continue;
@@ -464,7 +441,10 @@ impl ServerHandler for QoreMcp {
             .enable_prompts()
             .build();
         info.server_info = Implementation::from_build_env();
-        info.instructions = Some(INSTRUCTIONS.to_string());
+        info.instructions = Some(format!(
+            "{INSTRUCTIONS}\n\nConnection store in use: {}.",
+            self.vault().describe()
+        ));
         info
     }
 
@@ -543,15 +523,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("qore-mcp {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    if std::env::args()
+        .skip(1)
+        .any(|arg| arg == "--help" || arg == "-h")
+    {
+        println!(
+            "Usage: qore-mcp [--workspace <dir>]\n\nMCP server (stdio) over the QoreDB connections exposed to AI agents.\n\n  --workspace <dir>  use the .qoredb workspace at <dir> (or its parent) instead of the\n                     one detected from the working directory / the default vault\n  --version          print the version"
+        );
+        return Ok(());
+    }
 
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .init();
 
-    tracing::info!("starting qore-mcp (stdio)");
+    let explicit = std::env::args().skip(1).collect::<Vec<_>>();
+    let explicit = explicit
+        .iter()
+        .position(|arg| arg == "--workspace")
+        .and_then(|i| explicit.get(i + 1))
+        .map(PathBuf::from);
+    let workspace = agent_access::detect_workspace(explicit.as_deref());
+    if explicit.is_some() && workspace.is_none() {
+        eprintln!("error: no .qoredb/workspace.json found at the given --workspace path");
+        std::process::exit(2);
+    }
+    tracing::info!(
+        "starting qore-mcp (stdio), store: {}",
+        AgentVault::open(config_dir(), workspace.as_deref()).describe()
+    );
 
-    let service = QoreMcp::new(config_dir()).serve(stdio()).await?;
+    let service = QoreMcp::new(config_dir(), workspace).serve(stdio()).await?;
     service.waiting().await?;
     Ok(())
 }

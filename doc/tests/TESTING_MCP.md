@@ -13,8 +13,10 @@ Procédure manuelle à dérouler avant une release qui touche `crates/qore-mcp`,
   exemple `docker compose up -d postgres`), puis dans Settings > Agents IA
   activer l'interrupteur de `agents-on` et laisser `agents-off` désactivée.
 - Le serveur lit le vault par défaut (`~/.config/com.rapha.qoredb`, variable
-  `QOREDB_CONFIG_DIR` pour un autre dossier). Les connexions d'un workspace
-  ouvert ne sont pas visibles par le serveur.
+  `QOREDB_CONFIG_DIR` pour un autre dossier), sauf s'il est lancé depuis un
+  dossier contenant un workspace `.qoredb`, ou avec `--workspace <dir>` ou
+  `QOREDB_WORKSPACE` : il lit alors les connexions de ce workspace, comme l'app.
+  Les `instructions` renvoyées à `initialize` indiquent le magasin utilisé.
 
 ## 2) Handshake JSON-RPC
 

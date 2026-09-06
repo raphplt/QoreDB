@@ -331,7 +331,7 @@ Nothing is exposed by default: switch a connection on under **Settings > AI agen
 }
 ```
 
-For Claude Code: `claude mcp add qoredb -- /path/to/qore-mcp`. **Settings > AI agents** shows the detected binary path and ready-to-copy snippets.
+For Claude Code: `claude mcp add qoredb -- /path/to/qore-mcp`. Launched from a project folder that holds a `.qoredb` workspace, the server reads that workspace's connections, like the app does; `--workspace <dir>` selects one explicitly. **Settings > AI agents** shows the detected binary path and ready-to-copy snippets.
 
 Tools: `list_connections`, `list_namespaces`, `list_tables`, `describe_table`, `preview_table`, `search_schema`, `run_query`, `explain_query`. Resources `qore://{connection_id}/{database}/{table}` return a table schema; prompts `audit_table`, `explain_slow_query` and `document_schema` package common workflows. The `qore` CLI applies the same exposure rule.
 

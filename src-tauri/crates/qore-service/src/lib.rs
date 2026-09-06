@@ -21,6 +21,7 @@ pub mod ratelimit;
 pub mod sensitive;
 pub mod vault;
 pub mod virtual_relations;
+pub mod workspace;
 
 pub use context::ServiceContext;
 pub use error::ServiceError;

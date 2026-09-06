@@ -1088,7 +1088,9 @@
         "title": "Connexions exposées",
         "description": "Activez les connexions que les agents IA peuvent lire. Désactivé par défaut, y compris pour les connexions enregistrées avant cette version.",
         "empty": "Aucune connexion enregistrée. Créez-en une depuis la barre latérale, puis exposez-la ici.",
-        "toggle": "Exposer aux agents IA"
+        "toggle": "Exposer aux agents IA",
+        "storeDefault": "Magasin utilisé : vault par défaut. Un agent lancé depuis un dossier de projet contenant un workspace .qoredb lit ce workspace à la place.",
+        "storeWorkspace": "Magasin utilisé : workspace {{path}}. Les extraits le transmettent au serveur ; Claude Code lancé depuis ce dossier le détecte seul."
       },
       "limits": {
         "title": "Limites appliquées",
