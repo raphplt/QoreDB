@@ -36,6 +36,19 @@ export const CHANGELOG: ChangelogEntry[] = [
         type: 'improvement',
       },
       {
+        title: 'Query trends',
+        description:
+          'The audit log gains a Trends tab: the most frequent queries over 7, 14 or 30 days with runs, P50, P95, error rate and a daily P95 sparkline, computed from the audit file so they survive restarts.',
+        type: 'feature',
+      },
+      {
+        title: 'Regressions, N+1 bursts and threshold alerts',
+        description:
+          'A query whose P95 doubles against the previous week is flagged in Trends and in the status bar. Twenty runs of the same query within two seconds raise an N+1 alert once per session. Error-rate and slow-query thresholds over 15 minutes notify in-app and land in the audit log.',
+        type: 'feature',
+        proOnly: true,
+      },
+      {
         title: 'AI agents settings',
         description:
           'A Settings section detects the qore-mcp binary, offers copy-ready client snippets, lists the exposed connections and recalls the limits applied to agents.',

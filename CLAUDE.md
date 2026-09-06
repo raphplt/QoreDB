@@ -227,7 +227,11 @@ The following files are currently marked Premium (`BUSL-1.1`), grouped by module
 
 #### Profiling
 
-- `src-tauri/src/interceptor/profiling.rs`
+- `src-tauri/crates/qore-service/src/interceptor/profiling.rs`
+- `src-tauri/crates/qore-service/src/interceptor/regression.rs`
+- `src-tauri/crates/qore-service/src/interceptor/n_plus_one.rs`
+- `src-tauri/crates/qore-service/src/interceptor/alerts.rs`
+- `src/providers/InterceptorAlertsProvider.tsx`
 
 #### Index Suggestions
 
